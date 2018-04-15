@@ -74,6 +74,7 @@ FrmMain::FrmMain(QOpenGLWidget *parent) :
     if(serverDate.year()==2000) {
         QMessageBox::warning(this,"FEHLER","Server antwortet nicht! (Kein Datum)");
         exit = true;
+        key = false;
     } else if(serverDate>latestTestingDate) {
         QMessageBox::warning(this,"FEHLER","Die Testphase ist abgelaufen!\n"
                                            "Bitte warte auf den nächsten Test!");
@@ -581,6 +582,7 @@ void FrmMain::changeSize(QPainter &painter, int pixelSize, bool bold)
 
 void FrmMain::buyMinusTower(int pos)
 {
+    benis -= minusTowerCost;
     Tower *t = new Tower();
     t->type = 1;
     t->dmg = 10;
@@ -598,6 +600,7 @@ void FrmMain::buyMinusTower(int pos)
 
 void FrmMain::buyFavTower()
 {
+    benis -= herzTowerCost;
     Tower *t = new Tower();
     t->type = 2;
     t->dmg = 0;
@@ -616,6 +619,7 @@ void FrmMain::buyFavTower()
 
 void FrmMain::buyRepostTower()
 {
+    benis -= repostTowerCost;
     Tower *t = new Tower();
     t->type = 3;
     t->dmg = 0;
@@ -635,6 +639,7 @@ void FrmMain::buyRepostTower()
 
 void FrmMain::buyBenisTower()
 {
+    benis -= benisTowerCost;
     Tower *t = new Tower();
     t->type = 4;
     t->dmg = 10;
@@ -671,7 +676,7 @@ void FrmMain::reset(int custom)
     viewRect = QRect(0,0,1920,1080);
     transX = 0;
     transY = 0;
-    benis = 0;
+    benis = 150;
     mName = "";
     isGameOver = false;
     basehp = 75;
@@ -1552,25 +1557,25 @@ void FrmMain::towerMenuClicked(QRect pos)
         }
     } else { //noch kein turm, turmauswahl
         if(pos.intersects(minusTowerRect)) { //Minustower
-            if(towerMenuSelected==1) { //kaufen
+            if(towerMenuSelected==1&&benis>=minusTowerCost) { //kaufen
                 buyMinusTower(towerMenu);
             } else {
                 towerMenuSelected = 1;
             }
         } else if(pos.intersects(favTowerRect)) { //Favoritentower
-            if(towerMenuSelected==2) { //kaufen
+            if(towerMenuSelected==2&&benis>=herzTowerCost) { //kaufen
                 buyFavTower();
             } else {
                 towerMenuSelected = 2;
             }
         } else if(pos.intersects(repostTowerRect)) { //Reposttower
-            if(towerMenuSelected==3) {
+            if(towerMenuSelected==3&&benis>=repostTowerCost) {
                 buyRepostTower();
             } else {
                 towerMenuSelected = 3;
             }
         } else if(pos.intersects(benisTowerRect)) { //Benistower
-            if(towerMenuSelected==4) {
+            if(towerMenuSelected==4&&benis>=benisTowerCost) {
                 buyBenisTower();
             } else {
                 towerMenuSelected = 4;

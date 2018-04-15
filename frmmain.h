@@ -131,7 +131,7 @@ private:
     //</Farben>
     //<Standard>
     double zoomScale = 0;
-    int minusTowerCost = 0, herzTowerCost = 0, repostTowerCost = 0, benisTowerCost = 0;
+    int minusTowerCost = 50, herzTowerCost = 40, repostTowerCost = 75, benisTowerCost = 100;
     int shaking = 0;
     int shakeX=0, shakeY=0, shakeIntensity=3;
     QFont f = QFont("Arial");
