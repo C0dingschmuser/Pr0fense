@@ -441,7 +441,7 @@ void FrmMain::on_tanimation()
                 }
                 break;
             case 2: //mapeditor
-                reset();
+                reset(3);
                 loadMap(mName,1,mWidth,mHeight);
                 //active = 2;
                 break;
@@ -671,8 +671,10 @@ void FrmMain::reset(int custom)
     if(custom!=2) {
         mapSaved = 0;
     }
-    mWidth = 0;
-    mHeight = 0;
+    if(custom!=3) {
+        mWidth = 0;
+        mHeight = 0;
+    }
     viewRect = QRect(0,0,1920,1080);
     transX = 0;
     transY = 0;
@@ -1946,7 +1948,11 @@ void FrmMain::loadMap(QString name, int custom, int width, int height, QString p
             for(int i=0;i<maxX;i++) {
                 Tile *t = new Tile();
                 t->pos = QRect(0+(80*i),(80*u),80,80);
-                t->type = split[tiles.size()].toInt();
+                if(custom!=1) {
+                    t->type = split[tiles.size()].toInt();
+                } else {
+                    t->type = 6;
+                }
                 switch(t->type) {
                 case 1:
                     t->ran = Engine::random(0,2);
