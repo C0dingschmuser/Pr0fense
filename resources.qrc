@@ -50,5 +50,16 @@
         <file>data/images/towers/repost_mark.png</file>
         <file>data/images/towers/coin.png</file>
         <file>data/images/ui/herz.png</file>
+        <file>data/images/ui/beenden.png</file>
+        <file>data/music/track1.mp3</file>
+        <file>data/music/track2.mp3</file>
+        <file>data/images/ui/weiterspielen_grau.png</file>
+        <file>data/images/ui/sound0.png</file>
+        <file>data/images/ui/sound1.png</file>
+        <file>data/images/ui/fast.png</file>
+        <file>data/images/ui/normal.png</file>
+        <file>data/images/ui/stop.png</file>
+        <file>data/images/ui/superfast.png</file>
+        <file>data/images/ui/waves.png</file>
     </qresource>
 </RCC>

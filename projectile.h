@@ -2,6 +2,7 @@
 #define PROJECTILE_H
 #include <QRectF>
 #include <QDebug>
+#include <QString>
 #include "enemy.h"
 #include "engine.h"
 
@@ -20,6 +21,8 @@ public:
     double opacity = 1;
     double opacityDecAm = 0;
     Enemy *target = NULL;
+    int saveNum = -1;
+    int steps = 0;
     double vx;
     double vy;
     double vel;
@@ -30,6 +33,7 @@ public:
     void init2(QRectF rect, int type, int angle, double vx, double vy, double opacityDecAm, double vel=2.5, int pxID=1, double opacity=1);
     void init3(QString text, QPoint pos, int angle, double vx, double vy, double opacityDecAm, double vel=2.5, double opacity=1);
     void free();
+    QString toString();
     QRectF crect();
 };
 

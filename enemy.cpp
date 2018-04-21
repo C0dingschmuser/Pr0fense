@@ -2,13 +2,17 @@
 
 Enemy::Enemy()
 {
-
+    isUsed = false;
+    body = nullptr;
+    physicsInitialized = false;
 }
 
-void Enemy::init(QRectF pos, double speed, int cpos, int health)
+void Enemy::init(QRectF pos, double speed, int type, int cpos, int health)
 {
     stunned = 0;
     maxStun = 0;
+    soonBanned = false;
+    physicsInitialized = false;
     this->pos = pos;
     this->cpos = cpos;
     this->health = health;
@@ -16,14 +20,35 @@ void Enemy::init(QRectF pos, double speed, int cpos, int health)
     this->preHealth = health;
     this->speed = speed;
     this->ospeed = speed;
+    this->repost = 0;
+    this->type = type;
     isUsed = true;
-    speed = 1;
     dir = 1; //rechts
+}
+
+void Enemy::initPhysics(b2World *world)
+{
+    b2BodyDef BodyDef;
+    BodyDef.type = b2_dynamicBody;
+    BodyDef.position.Set(pos.x(),pos.y());
+    BodyDef.angle = 0;
+    body = world->CreateBody(&BodyDef);
+    b2CircleShape circleShape;
+    circleShape.m_p.Set(0,0);
+    circleShape.m_radius = pos.width()/2;
+    b2FixtureDef fixtureDef;
+    fixtureDef.shape = &circleShape;
+    fixtureDef.density = 0;
+    body->CreateFixture(&fixtureDef);
+    physicsInitialized = true;
 }
 
 void Enemy::moveBy(double xv, double yv)
 {
-    pos.moveTo(pos.x()+xv,pos.y()+yv);
+    if(!physicsInitialized) return;
+    //qDebug()<<body->GetWorld()->IsLocked();
+    body->SetLinearVelocity(b2Vec2(xv*10,yv*10));
+    //pos.moveTo(pos.x()+xv,pos.y()+yv);
 }
 
 void Enemy::setHealth(int health)
@@ -60,6 +85,7 @@ void Enemy::reduceHealth(int amount)
 
 void Enemy::free()
 {
+    body = nullptr;
     pos = QRectF();
     cpos = 0;
     health = 0;
@@ -68,13 +94,29 @@ void Enemy::free()
     maxRepost = 0;
 }
 
+void Enemy::updatePos()
+{
+    if(!physicsInitialized) return;
+    this->pos = QRectF(body->GetPosition().x-pos.width()/2,body->GetPosition().y-pos.height()/2,pos.width(),pos.height());
+}
+
 QRect Enemy::rect()
 {
     return QRect(pos.x(),pos.y(),pos.width(),pos.height());
 }
 
+QRectF Enemy::rectF(int a)
+{
+    if(!a) {
+        return pos;
+    } else {
+        return QRectF(pos.x(),pos.y(),pos.width(),pos.height());
+    }
+}
+
 QString Enemy::toString()
 {
+    pos = rectF(1);
     return QString::number(cpos) + "," +
             QString::number(dir) + "," +
             QString::number(health) + "," +
@@ -84,5 +126,8 @@ QString Enemy::toString()
             QString::number(pos.x()) + "," + QString::number(pos.y()) + "," + QString::number(pos.width()) + "," + QString::number(pos.height()) + "," +
             QString::number(preHealth) + "," +
             QString::number(speed) + "," +
-            QString::number(stunned);
+            QString::number(stunned) + "," +
+            QString::number(repost) + "," +
+            QString::number(soonBanned) + "," +
+            QString::number(type);
 }

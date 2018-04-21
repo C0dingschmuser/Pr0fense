@@ -1,23 +1,39 @@
 buildscript {
     repositories {
         jcenter()
+        google()
+        maven {
+            url 'https://maven.fabric.io/public'
+        }
     }
 
     dependencies {
-        classpath 'com.android.tools.build:gradle:2.2.3'
+        classpath 'com.android.tools.build:gradle:3.1.1'
+        classpath 'com.google.gms:google-services:3.2.1' // google-services plugin
+        classpath 'com.google.firebase:firebase-plugins:1.1.5'
+        classpath 'io.fabric.tools:gradle:1.25.1'
     }
 }
 
 allprojects {
     repositories {
         jcenter()
+        maven {
+            url "https://maven.google.com" // Google's Maven repository
+        }
     }
 }
 
 apply plugin: 'com.android.application'
+apply plugin: 'com.google.firebase.firebase-perf'
+apply plugin: 'io.fabric'
 
 dependencies {
-    compile fileTree(dir: 'libs', include: ['*.jar'])
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation 'com.google.firebase:firebase-core:15.0.0'
+    implementation 'com.google.firebase:firebase-perf:15.0.0'
+    implementation 'com.google.firebase:firebase-messaging:15.0.0'
+    implementation 'com.crashlytics.sdk.android:crashlytics:2.9.1'
 }
 
 android {
@@ -36,8 +52,10 @@ android {
 
     compileSdkVersion androidCompileSdkVersion.toInteger()
 
-    buildToolsVersion androidBuildToolsVersion
-
+    //buildToolsVersion androidBuildToolsVersion
+    defaultConfig {
+        applicationId "com.bruhgames.pr0fense"
+    }
     sourceSets {
         main {
             manifest.srcFile 'AndroidManifest.xml'
@@ -55,3 +73,5 @@ android {
         abortOnError false
     }
 }
+
+apply plugin: 'com.google.gms.google-services'

@@ -31,10 +31,10 @@ Projectile* ObjectPool::getProjectile()
         }
     }
     if(p==NULL) { //wenn kein freies gefunden
-        mutex->lock();
+       //mutex->lock();
         p = new Projectile();
         projectiles.push_back(p);
-        mutex->unlock();
+        //mutex->unlock();
     }
     p->isUsed = true;
     return p;
@@ -42,18 +42,18 @@ Projectile* ObjectPool::getProjectile()
 
 Enemy* ObjectPool::getEnemy()
 {
-    Enemy *e = NULL;
+    Enemy *e = nullptr;
     for(uint i=0;i<enemys.size();i++) {
         if(!enemys[i]->isUsed) {
             e = enemys[i];
             break;
         }
     }
-    if(e==NULL) { //wenn kein freies gefunden
-        mutex->lock();
+    if(e==nullptr) { //wenn kein freies gefunden
+        //mutex->lock();
         e = new Enemy();
         enemys.push_back(e);
-        mutex->unlock();
+        //mutex->unlock();
     }
     e->isUsed = true;
     return e;

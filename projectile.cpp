@@ -2,15 +2,34 @@
 
 Projectile::Projectile()
 {
-
+    isUsed = false;
 }
 
 void Projectile::update(bool full)
 {
     if(full&&!type) {
-        double angle = Engine::getAngle(crect().center(),target->rect().center());
-        vx = qCos(qDegreesToRadians((double)angle));
-        vy = qSin(qDegreesToRadians((double)angle));
+        double angle = this->angle;
+        int newAngle = Engine::getAngle(crect().center(),target->rect().center());
+        if(target->soonBanned&&steps>3) {
+            if(vel<2.5) {
+                vel += 0.5;
+            } else vel = 2.5;
+            this->angle = newAngle;
+        } else if(target->soonBanned&&steps<3) {
+            if(newAngle>angle) {
+                int diff = newAngle - angle;
+                angle += (diff*steps) / 3;
+            } else if(angle>newAngle) {
+                int diff = angle - newAngle;
+                angle -= (diff*steps) / 3;
+            }
+            this->angle = angle;
+        } else if(!target->soonBanned) {
+            this->angle = newAngle;
+        }
+        steps++;
+        vx = qCos(qDegreesToRadians((double)this->angle));
+        vy = qSin(qDegreesToRadians((double)this->angle));
     } else {
         rect.moveTo(rect.x()+vx*vel,rect.y()+vy*vel);
     }
@@ -24,6 +43,7 @@ void Projectile::init(QRectF rect, int angle, int dmg, Enemy *target, double vx,
 {
     isUsed = true;
     del = false;
+    steps = 0;
     this->type = 0;
     this->rect = rect;
     this->angle = angle;
@@ -43,6 +63,7 @@ void Projectile::init2(QRectF rect, int type, int angle, double vx, double vy, d
 
     isUsed = true;
     del = false;
+    steps = 0;
     this->pxID = pxID;
     this->rect = rect;
     this->type = type;
@@ -58,6 +79,7 @@ void Projectile::init3(QString text, QPoint pos, int angle, double vx, double vy
 {
     isUsed = true;
     del = false;
+    steps = 0;
     this->text = text;
     this->rect = QRectF(pos.x(),pos.y(),1,1);
     this->type = 2;
@@ -76,6 +98,25 @@ void Projectile::free()
     this->vx = 0;
     this->vy = 0;
     this->isUsed = false;
+}
+
+QString Projectile::toString()
+{
+    return QString::number(rect.x()) + "," + QString::number(rect.y()) + "," + QString::number(rect.width()) + "," + QString::number(rect.height()) + "," +
+            QString::number(angle) + "," +
+            QString::number(dmg) + "," +
+            QString::number(stun) + "," +
+            QString::number(repost) + "," +
+            QString::number(type) + "," +
+            QString::number(opacity) + "," +
+            QString::number(opacityDecAm) + "," +
+            QString::number(vx) + "," +
+            QString::number(vy) + "," +
+            QString::number(vel) + "," +
+            QString::number(del) + "," +
+            text + "," +
+            QString::number(pxID);
+
 }
 
 QRectF Projectile::crect()
