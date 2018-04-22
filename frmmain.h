@@ -46,7 +46,9 @@ public:
 
 private:
     Ui::FrmMain *ui;
+#ifdef Q_OS_ANDROID
     QInAppStore *store;
+#endif
     b2World *world=nullptr;
     b2Body *wall1=nullptr,*wall2=nullptr,*wall3=nullptr,*wall4=nullptr;
     QMediaPlayer *music;
@@ -311,16 +313,20 @@ private:
     bool checkColl(Enemy *target);
     int sendDataToServer(QString data);
     QDate getServerDate();
+#ifdef Q_OS_ANDROID
     int purchaseMediumMap();
     int purchaseLargeMap();
+#endif
     Level parseLvlString(QString lvl, int startPos=3);
     QPixmap createMapImage(int custom=0);
     QPixmap createMapImage(QString data, int width, int height);
 
 private slots:
+#ifdef Q_OS_ANDROID
     void handleTransaction(QInAppTransaction *transaction);
     void productRegistered(QInAppProduct *product);
     void productUnknown(QInAppProduct::ProductType ptype,QString id);
+#endif
     void on_tdraw();
     void on_tmain();
     void on_tprojectile();
