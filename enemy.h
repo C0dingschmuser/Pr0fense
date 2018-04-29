@@ -23,10 +23,13 @@ public:
     int preHealth;
     int maxHealth;
     int type = 0;
+    int path = 0;
+    int price;
     double speed;
-    double ospeed;
+    double ospeed; //originalgeschwindigkeit
+    double opacity = 0;
     b2Body *body;
-    void init(QRectF pos, double speed, int type, int cpos=0, int health=100);
+    void init(QRectF pos, double speed, int type, int cpos=0, int health=100, int path=0, int price=25);
     void initPhysics(b2World *world);
     void moveBy(double xv, double yv);
     void setHealth(int health);

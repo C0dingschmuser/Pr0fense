@@ -14,3 +14,15 @@ QString Level::getMapString()
     }
     return m;
 }
+
+int Level::getPathNum(int start)
+{
+    int num = -1;
+    for(uint i=0;i<paths.size();i++) {
+        if(paths[i].path[0]==start) {
+            num = i;
+            break;
+        }
+    }
+    return num;
+}

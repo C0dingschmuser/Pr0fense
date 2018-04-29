@@ -23,6 +23,10 @@ QString Tower::toString()
             QString::number(ratelvl) + "," +
             QString::number(speedlvl) + "," +
             QString::number(repost) + "," +
-            QString::number(projectilePxID);
+            QString::number(projectilePxID) + "," +
+            QString::number(dmgprice) + "," +
+            QString::number(rateprice) + "," +
+            QString::number(rangeprice) + "," +
+            QString::number(speedprice);
 
 }

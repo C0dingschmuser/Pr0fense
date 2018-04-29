@@ -79,7 +79,9 @@ SOURCES += \
     Box2D/Collision/Shapes/b2ChainShape.cpp \
     Box2D/Collision/Shapes/b2CircleShape.cpp \
     Box2D/Collision/Shapes/b2EdgeShape.cpp \
-    Box2D/Collision/Shapes/b2PolygonShape.cpp
+    Box2D/Collision/Shapes/b2PolygonShape.cpp \
+    shop.cpp \
+    path.cpp
 
 
 android: SOURCES += lockhelper.cpp
@@ -140,7 +142,9 @@ HEADERS += \
     Box2D/Collision/Shapes/b2CircleShape.h \
     Box2D/Collision/Shapes/b2EdgeShape.h \
     Box2D/Collision/Shapes/b2PolygonShape.h \
-    Box2D/Collision/Shapes/b2Shape.h
+    Box2D/Collision/Shapes/b2Shape.h \
+    shop.h \
+    path.h
 
 
 android: HEADERS += lockhelper.h
@@ -164,7 +168,8 @@ DISTFILES += \
 ANDROID_PACKAGE_SOURCE_DIR = $$PWD/android
 
 RESOURCES += \
-    resources.qrc
+    resources.qrc \
+    music.qrc
 
 unix|win32: LIBS += -L$$PWD/lib/ -lBox2D
 

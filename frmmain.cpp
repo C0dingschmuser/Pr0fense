@@ -7,26 +7,28 @@ FrmMain::FrmMain(QOpenGLWidget *parent) :
 {
     ui->setupUi(this);
     setAttribute(Qt::WA_AcceptTouchEvents,true);
+    music = new QMediaPlayer();
+    playlist_menu = new QMediaPlaylist();
+    playlist_game = new QMediaPlaylist();
+    playlist_menu->setPlaybackMode(QMediaPlaylist::Loop);
+    playlist_game->setPlaybackMode(QMediaPlaylist::Loop);
 #ifdef Q_OS_ANDROID
     store = new QInAppStore(this);
-#endif
-    music = new QMediaPlayer();
-    playlist = new QMediaPlaylist();
-    playlist->setPlaybackMode(QMediaPlaylist::CurrentItemInLoop);
-    playlist->addMedia(QUrl("qrc:/data/music/track1.mp3"));
-    playlist->addMedia(QUrl("qrc:/data/music/track2.mp3"));
-    connect(music,SIGNAL(mediaStatusChanged(QMediaPlayer::MediaStatus)),this,SLOT(on_mediaStateChanged(QMediaPlayer::MediaStatus)));
-#ifdef Q_OS_ANDROID
     connect(store,SIGNAL(transactionReady(QInAppTransaction*)),this,SLOT(handleTransaction(QInAppTransaction*)));
     connect(store,SIGNAL(productRegistered(QInAppProduct*)),this,SLOT(productRegistered(QInAppProduct*)));
     connect(store,SIGNAL(productUnknown(QInAppProduct::ProductType,QString)),this,SLOT(productUnknown(QInAppProduct::ProductType,QString)));
-#endif
-    connect(qApp,SIGNAL(applicationStateChanged(Qt::ApplicationState)),this,SLOT(on_appStateChanged(Qt::ApplicationState)));
-#ifdef Q_OS_ANDROID
     store->registerProduct(QInAppProduct::Unlockable,QStringLiteral("mapeditor_medium"));
     store->registerProduct(QInAppProduct::Unlockable,QStringLiteral("mapeditor_large"));
 #endif
+    playlist_menu->addMedia(QUrl("qrc:/data/music/track1.mp3"));
+    playlist_game->addMedia(QUrl("qrc:/data/music/track2.mp3"));
+    playlist_menu->addMedia(QUrl("qrc:/data/music/track4.mp3"));
+    playlist_game->addMedia(QUrl("qrc:/data/music/track3.mp3"));
+    //fehler: wenn mapeditor ausgewählt und weiterspielen dann grid
+    connect(music,SIGNAL(mediaStatusChanged(QMediaPlayer::MediaStatus)),this,SLOT(on_mediaStateChanged(QMediaPlayer::MediaStatus)));
+    connect(qApp,SIGNAL(applicationStateChanged(Qt::ApplicationState)),this,SLOT(on_appStateChanged(Qt::ApplicationState)));
     pool = new ObjectPool(&mutex);
+    server = new QTcpSocket();
     t_draw = new QTimer();
     t_animation = new QTimer();
     t_main = new QTimer();
@@ -55,44 +57,34 @@ FrmMain::FrmMain(QOpenGLWidget *parent) :
     loadUserData();
     loadLitteSprueche();
     initPhysics();
-    music->setPlaylist(playlist);
+    music->setPlaylist(playlist_menu);
     //TODO
     //Waves allg
-    //unterschiedliche stats für typen
 #ifdef QT_NO_DEBUG
     QMessageBox::information(this,
                              "INFO",
                              "<b>Pr0fense befindet sich in der Testphase</b><br>"
                              "- Bugs/Feedback bitte über Discord oder @05 melden<br>"
                              "- <b>Ja, ich weiß</b>, dass die Turm-Upgrades noch <b>gratis</b> sind<br>"
-                             "- <b>Ja, ich weiß</b>, dass das Spielen von eigenen Maps aktuell <b>nicht</b> geht<br>"
+                             "- <b>Ja, ich weiß</b>, dass der Shop aktuell nicht geht<br>"
+                             "- <b>Ja, ich weiß</b>, dass es aktuell noch Unbalanced ist<br>"
                              "- Sourcecode findet ihr auf <b>github.com/firediver/pr0fense</b><br>"
                              "- Zur Fehlererkennung und Diagnostik werden einige anonyme Daten an<br>"
                              "den Server geschickt, dazu gehören:<br>"
                              "-> Onlinezeiten<br>"
                              "-> Fehlermeldungen<br>"
                              "-> Firebase-Spezifische Daten");
-    QDate serverDate = getServerDate();
-    if(serverDate.year()==2000) {
-        QMessageBox::warning(this,"FEHLER","Server antwortet nicht! (Kein Datum)");
-        exit = true;
-        key = false;
-    } else if(serverDate>latestTestingDate) {
-        QMessageBox::warning(this,"FEHLER","Die Testphase ist abgelaufen!\n"
-                                           "Bitte warte auf den nächsten Test!");
-        exit = true;
-        key = false;
-    }
 #endif
-    //loadMap("map0");
+    QFuture<void> future = QtConcurrent::run(this, &FrmMain::getStatus);
+    //getStatus();
     t_draw->start(16); //NUR zeichnen & input
     t_main->start(10); //turmschüsse & so
     t_wave->start(100); //gegnerspawn
     t_waveSpeed->start(5); //gegnerbewegung
     t_projectile->start(10); //projektile von türmen
-    t_projectile_full->start(200); //update von ziel
+    t_projectile_full->start(100); //update von ziel
     t_menuAn->start(100); //blussis im hauptmenü
-    t_physics->start(5);
+    t_physics->start(5); //box2d physik
     t_physics->moveToThread(workerThread);
     t_animation->moveToThread(workerThread);
     t_main->moveToThread(workerThread);
@@ -112,11 +104,20 @@ FrmMain::~FrmMain()
     if(active==1) {
         saveGameSave();
     }
+    saveMaps();
+    saveOptions();
+    QMetaObject::invokeMethod(t_draw,"stop");
+    QMetaObject::invokeMethod(t_main,"stop");
+    QMetaObject::invokeMethod(t_projectile,"stop");
+    QMetaObject::invokeMethod(t_projectile_full,"stop");
+    QMetaObject::invokeMethod(t_wave,"stop");
+    QMetaObject::invokeMethod(t_waveSpeed,"stop");
+    QMetaObject::invokeMethod(t_physics,"stop");
+    QMetaObject::invokeMethod(t_menuAn,"stop");
+    workerThread->terminate();
     delete ui;
     delete world;
     delete pool;
-    saveMaps();
-    saveOptions();
 }
 
 void FrmMain::initPhysics()
@@ -125,8 +126,17 @@ void FrmMain::initPhysics()
     world = new b2World(gravity);
 }
 
+void FrmMain::resetTimers()
+{
+    QMetaObject::invokeMethod(t_projectile_full,"start",Q_ARG(int,100));
+    QMetaObject::invokeMethod(t_projectile,"start",Q_ARG(int,10));
+    QMetaObject::invokeMethod(t_main,"start",Q_ARG(int,10));
+    QMetaObject::invokeMethod(t_wave,"start",Q_ARG(int,100));
+}
+
 void FrmMain::checkPush(b2Body *delBody)
 {
+    if(delBody==nullptr) return;
     bool ok=true;
     for(uint i=0;i<delBodies.size();i++) {
         if(delBodies[i]==delBody) {
@@ -185,6 +195,10 @@ void FrmMain::on_tdraw()
 void FrmMain::on_tmain()
 {
     if(exit) qApp->exit();
+    if(newPost&&!active) {
+        newPost = false;
+        newPostInfo();
+    }
     if(active==0||active==2||gamePaused) return;
 
     if(DEBUG) {
@@ -197,13 +211,14 @@ void FrmMain::on_tmain()
                 delTower(i);
             } else {
                 if(towers[i]->currentReload<=0) { //schuss
-                    int pos = -1, min=towers[i]->range;
+                    int pos = -1, min=1000;
                     QPointF tCenter = towers[i]->pos.center();
                     bool done = false;
                     if(towers[i]->hasProjectileSpeed) {
                         for(uint a=0;a<enemys.size()&&!done;a++) {
                             if(enemys[a]->physicsInitialized) {
                                 if(enemys[a]->preHealth&&!enemys[a]->soonBanned) {
+                                    double health = enemys[a]->preHealth;
                                     double distance = Engine::getDistance(tCenter,enemys[a]->rectF().center());
                                     if(distance<towers[i]->range) {
                                         switch(towers[i]->type) {
@@ -212,10 +227,10 @@ void FrmMain::on_tmain()
                                                 pos = a;
                                                 done = true;
                                                 break;
-                                            } else if(distance<min) {
+                                            } else if(health<min) {
                                                 pos = a;
-                                                min = distance;
-                                                //done=true; //<-hinmachen falls nicht auf nächsten
+                                                min = health;
+                                                //done=true; //<-hinmachen falls nicht auf den mit niedrigsten hp
                                             }
                                             break;
                                         case 2: //Favoritentower
@@ -304,6 +319,7 @@ void FrmMain::on_tmain()
                                 if(ok>0) {
                                     target->stunned = 99999;
                                     target->soonBanned = true;
+                                    target->body->SetLinearDamping(0.05);
                                     towers[i]->target = target;
                                     towers[i]->shotsFiredSinceReload = 0;
                                 }
@@ -363,11 +379,11 @@ void FrmMain::on_tmain()
         }
         for(uint i=0;i<enemys.size();i++) {
             if(enemys[i]->health<=0) {//wenn tot dann löschen
-                benis += 25;
+                benis += enemys[i]->price;
                 QPoint point = enemys[i]->rect().center();
                 int angle = -90;
                 Projectile *p = pool->getProjectile();
-                p->init3("+ 25",
+                p->init3("+ "+QString::number(enemys[i]->price),
                          QPoint(point.x()-25,point.y()),
                          angle,
                          qCos(qDegreesToRadians((double)angle)),
@@ -389,7 +405,7 @@ void FrmMain::on_tmain()
 
 void FrmMain::on_tprojectile()
 {
-    if(active==2||gamePaused) return;
+    if(active==2||(gamePaused&&backMenu)||(gamePaused&&loaded)||moveAn==4) return;
     if(DEBUG) {
         timerP.restart();
     }
@@ -407,12 +423,18 @@ void FrmMain::on_tprojectile()
                         projectiles[i]->del = 1;
                         break;
                     }
-                } else if(projectiles[i]->type==2){ //text
-                    if(projectiles[i]->opacity<=0) projectiles[i]->del = 3;
+                } else if(projectiles[i]->type==2||projectiles[i]->type==1){ //text oder blus
+                    if(projectiles[i]->opacity<=0&&projectiles[i]->opacityDecAm) projectiles[i]->del = 3;
                 }
-                if(!projectiles[i]->type&&!projectiles[i]->target->soonBanned) { //wenn kein effekt
+                if(!projectiles[i]->type&&
+                        !projectiles[i]->target->soonBanned) { //wenn kein effekt
                     if(!projectiles[i]->rect.intersects(QRectF(0,0,mapwidth,mapheight))) {
                         projectiles[i]->del = 2;
+                    }
+                }
+                if(projectiles[i]->type==1&&projectiles[i]->opacity<0.5) {
+                    if(!projectiles[i]->rect.intersects(QRectF(0,0,1920,1080))) {
+                        projectiles[i]->del = 4;
                     }
                 }
             }
@@ -460,72 +482,94 @@ void FrmMain::on_twave()
         if((enemys.size()&&mapPlaying)||!mapLoaded||
                 gamePaused||active==0||(active==2&&!mapPlaying)||
                 isGameOver||!playingSpeed) return;
-        QRect knot = tiles[path[0]]->rect();
+        QRect knot = tiles[paths[chosenpath].path[0]]->rect();
         int width;
         int health;
+        int price;
         int type;
         double speed;
+        double diff = 1;
+        if(waveCount>10) {
+            diff = 1.1*(waveCount/10);
+        }
         if(currentWave.fliesen) {
             type = 0;
-            health = 25;
-            width = 20;
+            health = 25*diff;
             speed = 1;
+            price = 5;
         } else if(currentWave.neuschwuchteln) {
             type = 1;
-            health = 30;
-            width = 25;
+            health = 30*diff;
             speed = 0.80;
+            price = 10;
         } else if(currentWave.schwuchteln) {
             type = 2;
-            health = 40;
-            width = 30;
+            health = 40*diff;
             speed = 0.55;
+            price = 15;
         } else if(currentWave.spender) {
             type = 3;
             health = 50;
-            width = 30;
             speed = 0.65;
+            price = 20;
         } else if(currentWave.altschwuchteln) {
             type = 4;
-            health = 70;
-            width = 40;
+            health = 70*diff;
             speed = 0.45;
+            price = 20;
         } else if(currentWave.mods) {
             type = 5;
-            health = 100;
-            width = 40;
+            health = 100*diff;
             speed = 0.40;
+            price = 30;
         } else if(currentWave.admins) {
             type = 6;
-            health = 100;
-            width = 50;
+            health = 100*diff;
             speed = 0.35;
+            price = 30;
         } else if(currentWave.legenden) {
             type = 7;
-            health = 200;
-            width = 75;
+            health = 200*diff;
             speed = 0.3;
+            price = 40;
         }
+        width = getEnemySizeByType(type);
         QRectF r;
-        //bool ok=false;
-        //while(!ok) {
-            //ok = true;
-        if(width>50) {
+        std::vector <int> enemysAtSpawn;
+        for(uint i=0;i<enemys.size();i++) {
+            if(enemys[i]->cpos<2) enemysAtSpawn.push_back(i);
+        }
+        double size = 6400;
+        for(uint i=0;i<enemysAtSpawn.size();i++) {
+            double es = getEnemySizeByType(enemys[enemysAtSpawn[i]]->type)/2;
+            size -= M_PI*(es*es);
+        }
+        if(size<M_PI*((width/2)*(width/2))) return;
+        //if(width>50) {
             r = QRectF(knot.x()+((80-width)/2)+width/2,
                  knot.y()+((80-width)/2)+width/2,
                  width,width);
-        } else {
-            double x = (double)Engine::random(knot.x(),(knot.x()+knot.width())-width);
-            double y = (double)Engine::random(knot.y(),(knot.y()+knot.height())-width);
-            r = QRectF(x,y,width,width);
-        }
+        //} else {
+            //double x = (double)Engine::random(knot.x(),(knot.x()+knot.width())-width);
+            //double y = (double)Engine::random(knot.y(),(knot.y()+knot.height())-width);
+            //r = QRectF(x,y,width,width);
+        //}
         if(playingSpeed&&!enemys.size()&&currentWave.empty) {
             playingSpeed = 0;
             gamePaused = true;
-            if(waveCount<=9) {
-                waveCount++;
+            waveCount++;
+            if(waveCount%10!=0&&waveCount) {
+                internalWaveCount++;
+            } else {
+                internalWaveCount = 0;
             }
-            currentWave = waves[waveCount];
+            if(waveCount%5==0&&waveCount) {
+                chosenpath++;
+                if(chosenpath>paths.size()-1) {
+                    chosenpath = 0;
+                }
+            }
+            currentWave = waves[internalWaveCount];
             return;
         }
         if(currentWave.fliesen) {
@@ -549,13 +593,13 @@ void FrmMain::on_twave()
             return;
         }
         Enemy *e = pool->getEnemy();//new Enemy(knot,0);
-        e->init(r,speed,type,0,health);
+        e->init(r,speed,type,0,health,chosenpath,price);
         int dir = 1;
-        if(path[0]-1==path[1]) { //links
+        if(paths[chosenpath].path[0]-1==paths[chosenpath].path[1]) { //links
             dir = 3;
-        } else if(path[0]+(mapwidth/80)==path[1]) { //unten
+        } else if(paths[chosenpath].path[0]+(mapwidth/80)==paths[chosenpath].path[1]) { //unten
             dir = 2;
-        } else if(path[0]-(mapwidth/80)==path[1]) { //oben
+        } else if(paths[chosenpath].path[0]-(mapwidth/80)==paths[chosenpath].path[1]) { //oben
             dir = 4;
         }
         e->dir = dir;
@@ -578,60 +622,69 @@ void FrmMain::on_twaveSpeed()
             for(uint i=0;i<enemys.size();i++) {
                 int next = enemys[i]->cpos+1;
                 //mutex.lock();
-                if(!enemys[i]->stunned) {
-                    if(enemys[i]->repost) {
-                        enemys[i]->repost -= 5*playingSpeed;
-                        if(enemys[i]->repost<0) enemys[i]->repost = 0;
+                if(enemys[i]->repost) {
+                    enemys[i]->repost -= 5*playingSpeed;
+                    if(enemys[i]->repost<0) enemys[i]->repost = 0;
+                }
+                if(next<(int)paths[enemys[i]->path].path.size()) {
+                    QRect knot = tiles[paths[enemys[i]->path].path[next]]->rect();
+                    knot.adjust(20,20,-20,-20);
+                    if(enemys[i]->stunned) {
+                        if(enemys[i]->speed >= enemys[i]->ospeed*0.5) {
+                            enemys[i]->speed -= enemys[i]->ospeed*0.1;
+                        }
+                    } else {
+                        if(enemys[i]->speed < enemys[i]->ospeed) {
+                            enemys[i]->speed += enemys[i]->ospeed*0.1;
+                            if(enemys[i]->speed > enemys[i]->ospeed) enemys[i]->speed = enemys[i]->ospeed;
+                        }
                     }
-                    if(next<(int)path.size()) {
-                        QRect knot = tiles[path[next]]->rect();
-                        knot.adjust(20,20,-20,-20);
-                        double speed = enemys[i]->speed;
-                        //if(i-1<enemys.size()) speed = enemys[i-1]->speed;
-                        double x=0,y=0;
-                        if(path[next-1]+1==path[next]) { //rechts
-                            x = speed;
-                            enemys[i]->dir = 1;
-                        } else if(path[next-1]-1==path[next]) { //links
-                            x = -speed;
-                            enemys[i]->dir = 3;
+                    double speed = enemys[i]->speed;
+                    //if(i-1<enemys.size()) speed = enemys[i-1]->speed;
+                    double x=0,y=0;
+                    if(paths[enemys[i]->path].path[next-1]+1==paths[enemys[i]->path].path[next]) { //rechts
+                        x = speed;
+                        enemys[i]->dir = 1;
+                    } else if(paths[enemys[i]->path].path[next-1]-1==paths[enemys[i]->path].path[next]) { //links
+                        x = -speed;
+                        enemys[i]->dir = 3;
+                    }
+                    if(paths[enemys[i]->path].path[next-1]+(mapwidth/80)==paths[enemys[i]->path].path[next]) { //unten
+                        y = speed;
+                        enemys[i]->dir = 2;
+                    } else if(paths[enemys[i]->path].path[next-1]-(mapwidth/80)==paths[enemys[i]->path].path[next]) { //oben
+                        y = -speed;
+                        enemys[i]->dir = 4;
+                    }
+                    enemys[i]->moveBy(x,y);
+                    if(!enemys[i]->rect().intersects(tiles[paths[enemys[i]->path].path[next-1]]->rect())) {
+                        enemys[i]->cpos++;
+                    }
+                    /*int matches = 0;
+                    if(enemys[i]->rect().intersects(tiles[path[next]]->rect())) {
+                        for(uint a=next-1;a<path.size();a++) {
+                            if(enemys[i]->rect().intersects(tiles[path[a]]->rect())) {
+                                matches++;
+                            }
                         }
-                        if(path[next-1]+(mapwidth/80)==path[next]) { //unten
-                            y = speed;
-                            enemys[i]->dir = 2;
-                        } else if(path[next-1]-(mapwidth/80)==path[next]) { //oben
-                            y = -speed;
-                            enemys[i]->dir = 4;
-                        }
-                        enemys[i]->moveBy(x,y);
-                        if(!enemys[i]->rect().intersects(tiles[path[next-1]]->rect())) {
+                        if(matches==1) {
                             enemys[i]->cpos++;
                         }
-                        /*int matches = 0;
-                        if(enemys[i]->rect().intersects(tiles[path[next]]->rect())) {
-                            for(uint a=next-1;a<path.size();a++) {
-                                if(enemys[i]->rect().intersects(tiles[path[a]]->rect())) {
-                                    matches++;
-                                }
-                            }
-                            if(matches==1) {
-                                enemys[i]->cpos++;
-                            }
-                        }*/
+                    }*/
 
-                    } else {
-                        //gegner löschen
+                } else {
+                    //gegner löschen
 /*#ifdef QT_NO_DEBUG //camera shake bei release
-                        shaking = 100;
-                        if(!t_shake->isActive()) QMetaObject::invokeMethod(t_shake,"start",Q_ARG(int,5));
+                    shaking = 100;
+                    if(!t_shake->isActive()) QMetaObject::invokeMethod(t_shake,"start",Q_ARG(int,5));
 #endif*/
-                        delEnemy(i);
-                        basehp--;
-                        if(!basehp) {
-                            gameOver();
-                        }
+                    delEnemy(i);
+                    basehp--;
+                    if(!basehp) {
+                        gameOver();
                     }
-                } else if(enemys[i]->stunned) {
+                }
+                if(enemys[i]->stunned) {
                     enemys[i]->stunned -= 5*playingSpeed;
                     if(enemys[i]->stunned<0) enemys[i]->stunned = 0;
                 }
@@ -648,23 +701,24 @@ void FrmMain::on_twaveSpeed()
 void FrmMain::on_tanimation()
 {
     if(!fdir) { //fade--
-        if(fade) fade -= 0.01;
-        if(fade<=0) {
-            fade = 0;
+        if(blendRectOpacity<1) blendRectOpacity += 0.01;
+        if(blendRectOpacity>=1) {
+            blendRectOpacity = 1;
             switch(moveAn) {
             case 1: //active
-                playlist->setCurrentIndex(1);
-                playlist->setPlaybackMode(QMediaPlaylist::CurrentItemInLoop);
+                changePlaylist(1);
                 switch(subActiveSelected) {
                 case 1: //levels
+                {
                     reset();
                     loadMap("map"+QString::number(subLevelSelected-4));
                     createBounds();
                     gamePaused = true;
                     //active = 1;
                     break;
+                }
                 case 2: //eigene
-                    reset();
+                    reset(2);
                     loadMap("",2);
                     createBounds();
                     gamePaused = true;
@@ -681,23 +735,21 @@ void FrmMain::on_tanimation()
                 //active = 2;
                 break;
             case 3: //mapeditor-own
-                reset();
+                reset(2);
                 subLevelSelected = subActiveSelected;
                 loadMap(mName,2,mWidth,mHeight);
                 //active = 2;
                 break;
             case 4: //zurück
                 if(active!=2&&!error) {
-                    playlist->setCurrentIndex(0);
-                    playlist->setPlaybackMode(QMediaPlaylist::CurrentItemInLoop);
+                    changePlaylist(0);
                     saveGameSave();
                 }
-                reset();
                 active = 0;
+                reset();
                 break;
             case 5: //continue
-                playlist->setCurrentIndex(1);
-                playlist->setPlaybackMode(QMediaPlaylist::CurrentItemInLoop);
+                changePlaylist(1);
                 reset();
                 loadGameSave();
                 createBounds();
@@ -707,15 +759,15 @@ void FrmMain::on_tanimation()
             fdir = 1;
         }
     } else if(fdir==1) { //fade++
-        if(fade<1) fade += 0.01;
-        if(fade>=1) {
+        if(blendRectOpacity) blendRectOpacity -= 0.01;
+        if(blendRectOpacity<=0) {
             if(moveAn==1||moveAn==5) {
                 active = 1;
             } else if(moveAn==2||moveAn==3) {
                 active = 2;
             }
             moveAn = -1;
-            fade = 1;
+            blendRectOpacity = 0;
             fdir = -1;
             QMetaObject::invokeMethod(t_animation,"stop");
         }
@@ -746,26 +798,7 @@ void FrmMain::on_tshake()
 void FrmMain::on_tcoll()
 {
     return;
-    try {
-        if(active==0||active==2) return;
-        for(uint i=0;i<enemys.size();i++) {
-            //if(i-1<enemys.size()) speed = enemys[i-1]->speed;
-            bool coll = checkColl(enemys[i]);
-            //mutex.lock();
-            if(coll||enemys[i]->stunned) {
-                if(enemys[i]->speed>0) enemys[i]->speed -= enemys[i]->ospeed/6;
-                if(enemys[i]->speed<0) enemys[i]->speed = 0;
-                //enemys[i]->stopped = true;
-            } else {
-                //enemys[i]->stopped = false;
-                if(enemys[i]->speed<enemys[i]->ospeed) enemys[i]->speed += enemys[i]->ospeed/3;
-                if(enemys[i]->speed>enemys[i]->ospeed) enemys[i]->speed = enemys[i] ->ospeed;
-            }
-            //mutex.unlock();
-        }
-    } catch(std::exception e) {
-
-    }
+    //entfernen
 }
 
 void FrmMain::on_tmenuAn()
@@ -773,7 +806,7 @@ void FrmMain::on_tmenuAn()
     if(active==0&&!t_animation->isActive()) {
         Projectile *p = pool->getProjectile();
         int angle = Engine::random(95,130);
-        p->init2(QRectF(Engine::random(1550,1800),-40,40,40), //pos
+        p->init2(QRectF(Engine::random(1550,1800),-80,40,40), //pos
                 1, //type
                 angle, //angle
                 qCos(qDegreesToRadians((double)angle)), //vx
@@ -786,6 +819,7 @@ void FrmMain::on_tmenuAn()
 
 void FrmMain::on_tphysics()
 {
+    if(physicsPaused) return;
     if(!gamePaused&&active==1) {
         //qDebug()<<world->GetBodyCount();
         //mutex.lock();
@@ -795,13 +829,14 @@ void FrmMain::on_tphysics()
             world->Step(0.1,2,4);
         }
         for(uint i=0;i<enemys.size();i++) {
-            enemys[i]->updatePos();
+            //enemys[i]->updatePos();
         }
     }
     for(uint i=0;i<delBodies.size();i++) {
         if(!world->IsLocked()) {
             if(delBodies[i]!=nullptr) {
                 world->DestroyBody(delBodies[i]);
+                delBodies[i] = nullptr;
             }
         }
     }
@@ -813,14 +848,21 @@ void FrmMain::on_tphysics()
         }
     }
     createBodies.resize(0);
+    for(uint i=0;i<createTileBodies.size();i++) {
+        if(!world->IsLocked()) {
+            createTileBodies[i]->initPhysics(world);
+        }
+    }
+    createTileBodies.resize(0);
 }
 
 void FrmMain::on_mediaStateChanged(QMediaPlayer::MediaStatus status)
 {
-    if(status == QMediaPlayer::MediaStatus::LoadedMedia) {
+    if(status == QMediaPlayer::MediaStatus::LoadedMedia ||
+            status == QMediaPlayer::MediaStatus::BufferedMedia) {
         music->setVolume(25);
         if(soundEnabled) {
-            QMetaObject::invokeMethod(music,"play");
+            music->play();
         }
     }
 }
@@ -834,6 +876,7 @@ void FrmMain::on_appStateChanged(Qt::ApplicationState state)
         if(soundEnabled) QMetaObject::invokeMethod(music,"pause");
         QMetaObject::invokeMethod(t_main,"stop");
         QMetaObject::invokeMethod(t_projectile,"stop");
+        QMetaObject::invokeMethod(t_projectile_full,"stop");
         QMetaObject::invokeMethod(t_wave,"stop");
         QMetaObject::invokeMethod(t_waveSpeed,"stop");
         QMetaObject::invokeMethod(t_physics,"stop");
@@ -853,12 +896,14 @@ void FrmMain::on_appStateChanged(Qt::ApplicationState state)
         if(soundEnabled) QMetaObject::invokeMethod(music,"play");
         QMetaObject::invokeMethod(t_main,"start");
         QMetaObject::invokeMethod(t_projectile,"start");
-        QMetaObject::invokeMethod(t_wave,"start");
+        QMetaObject::invokeMethod(t_projectile_full,"start",Q_ARG(int,100));
+        QMetaObject::invokeMethod(t_wave,"start",Q_ARG(int,100));
         QMetaObject::invokeMethod(t_waveSpeed,"start");
         QMetaObject::invokeMethod(t_physics,"start");
         QMetaObject::invokeMethod(t_menuAn,"start");
-        if(active==1) {
+        if(active==1&&enemys.size()) {
             playingSpeed = 1;
+            resetTimers();
         }
     }
 }
@@ -1013,12 +1058,16 @@ void FrmMain::reset(int custom)
         mHeight = 0;
     }
     viewRect = QRect(0,0,1920,1080);
+    chosenpath = 0;
     transX = 0;
     transY = 0;
     benis = 150;
+    towerMenu = -1;
     currentWave = waves[0];
     waveCount = 0;
+    internalWaveCount = 0;
     mName = "";
+    loaded = false;
     playingSpeed = 0; //noch auf 0 ändern
     isGameOver = false;
     error = false;
@@ -1027,13 +1076,10 @@ void FrmMain::reset(int custom)
     enemyBaseCount = 0;
     gamePaused = false;
     for(uint i=0;i<tiles.size();i++) {
-        if(tiles[i]->type!=1&&tiles[i]->type!=4&&tiles[i]->type!=5) {
-            checkPush(tiles[i]->body);
-        }
         delete tiles[i];
     }
     tiles.resize(0);
-    delAllEnemys();
+    delAllEnemys(1);
     for(uint i=0;i<towers.size();i++) {
         delete towers[i];
     }
@@ -1043,21 +1089,27 @@ void FrmMain::reset(int custom)
     }
     projectiles.resize(0);
     for(uint i=0;i<enemys.size();i++) {
-        checkPush(enemys[i]->body);
         enemys[i]->free();
     }
     enemys.resize(0);
-    path.resize(0);
-    checkPush(wall1);
-    checkPush(wall2);
-    checkPush(wall3);
-    checkPush(wall4);
+    paths.resize(0);
+    //delAll = 1;
+    do {
+        QMetaObject::invokeMethod(t_physics,"stop");
+    } while(t_physics->isActive());
+    b2Body *list = world->GetBodyList();
+    while(list) {
+        b2Body *tmp = list->GetNext();
+        world->DestroyBody(list);
+        list = tmp;
+    }
+    QMetaObject::invokeMethod(t_physics,"start");
 }
 
-void FrmMain::delAllEnemys()
+void FrmMain::delAllEnemys(int a)
 {
     for(uint i=0;i<enemys.size();i++) {
-        checkPush(enemys[i]->body);
+        if(!a) checkPush(enemys[i]->body);
         enemys[i]->free();
     }
     enemys.resize(0);
@@ -1068,58 +1120,28 @@ void FrmMain::pauseGame()
     gamePaused = true;
 }
 
+void FrmMain::error_string(QString e1, QString e2, QString e3)
+{
+    QMessageBox::critical(this,"Fehler",e1+"\n"+e2+"\n"+e3);
+    error = true;
+    hasPlayingSave = false;
+    moveAn = 4;
+    active = 0;
+    return;
+}
+
 void FrmMain::error_save(QFile &file)
 {
     file.close();
     file.remove();
     fdir = 0;
-    playlist->setCurrentIndex(0);
-    playlist->setPlaybackMode(QMediaPlaylist::CurrentItemInLoop);
+    changePlaylist(0);
     error = true;
     hasPlayingSave = false;
     moveAn = 4;
     active = 0;
     QMessageBox::warning(this,"Fehler","Fehler beim laden!");
     return;
-}
-
-bool FrmMain::checkColl(Enemy *target)
-{
-    bool coll=false;
-    int cpos = target->cpos;
-    if(cpos+1<(int)path.size()&&enemys.size()>1) { //wenn nicht direkt vor ziel & mehr als 1 gegner
-        QRect rect = target->rect();
-        for(uint a=0;a<enemys.size();a++) {
-            if(target!=enemys[a]) {
-                if((enemys[a]->cpos==cpos||enemys[a]->cpos==cpos+1)&&
-                        !enemys[a]->stunned/*&&enemys[a]->type==enemys[i]->type*/) {
-                    //a = gegner der vorne liegt
-                    bool ok = true;
-                    if(enemys[a]->cpos==cpos) { //check wer näher liegt
-                        QRectF knot = tiles[path[cpos+1]]->pos;
-                        if(Engine::getDistance(enemys[a]->rectF().center(),knot.center())>
-                                Engine::getDistance(target->pos.center(),knot.center())) { //gegner a MUSS näher am tile sein sonst !ok
-                            ok = false;
-                        }
-                    }
-                    if(ok) {
-                        QRect trect = enemys[a]->rect();
-                        trect.adjust(-4,-4,4,4);
-                        if(trect.intersects(rect)) {
-                            if(Engine::intersectsCirclewithCircle(trect,rect)) {
-                                coll = true;
-                                break;
-                            } /*else if(enemys[a]->speed<enemys[i]->speed) {
-                                enemys[i]->speed -= enemys[i]->ospeed/6;
-                                if(enemys[i]->speed<0) enemys[i]->speed = 0;
-                            }*/
-                        }
-                    }
-                }
-            }
-        }
-    }
-    return coll;
 }
 
 int FrmMain::sendDataToServer(QString data)
@@ -1141,6 +1163,38 @@ int FrmMain::sendDataToServer(QString data)
     return code;
 }
 
+int FrmMain::getEnemySizeByType(int type)
+{
+    int size;
+    switch(type) {
+    case 0:
+        size = 20;
+        break;
+    case 1:
+        size = 25;
+        break;
+    case 2:
+        size = 30;
+        break;
+    case 3:
+        size = 30;
+        break;
+    case 4:
+        size = 40;
+        break;
+    case 5:
+        size = 40;
+        break;
+    case 6:
+        size = 50;
+        break;
+    case 7:
+        size = 75;
+        break;
+    }
+    return size;
+}
+
 QDate FrmMain::getServerDate()
 {
     QDate date(2000,1,1);
@@ -1158,6 +1212,47 @@ QDate FrmMain::getServerDate()
     }
     socket->deleteLater();
     return date;
+}
+
+void FrmMain::getStatus()
+{
+    QTcpSocket *server = new QTcpSocket();
+    server->connectToHost(serverIP,38910);
+    server->waitForConnected(1500);
+    if(server->state()==QTcpSocket::ConnectedState) {
+        QString data = ".0#~";
+        server->write(data.toUtf8());
+        server->waitForBytesWritten(1500);
+        server->waitForReadyRead(1500);
+        QString response = server->readAll();
+        if(response.at(0)=="."&&response.contains("~")) { //Antwort OK
+            response.remove(0,1);
+            QStringList split = response.split("#");
+            if(version!=split[1]) { //Outdated
+                outdated = true;
+            }
+            if(newestPost!=split[0]) { //Neuer Post
+                newestPost = split[0];
+                newPost = true;
+            }
+        }
+    } else qDebug()<<"Connection failed. [getStatus]";
+    server->close();
+    server->deleteLater();
+}
+
+void FrmMain::newPostInfo()
+{
+    QUrl link("http://www.pr0gramm.com/new/"+newestPost);
+    QMessageBox boxMsg;
+    boxMsg.setWindowTitle("Info");
+    boxMsg.setText("Neuer Pr0fense-P0st auf pr0! Willst du ihn öffnen?");
+    boxMsg.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
+    boxMsg.setDefaultButton(QMessageBox::Yes);
+    int ret = boxMsg.exec();
+    if(ret==QMessageBox::Yes) {
+        QDesktopServices::openUrl(link);
+    }
 }
 
 #ifdef Q_OS_ANDROID
@@ -1187,9 +1282,16 @@ Level FrmMain::parseLvlString(QString lvl, int startPos)
     l.height = msplit[2].toInt();
     l.lvlImage = createMapImage(msplit[4],l.width,l.height);
     QString path = msplit[3];
-    QStringList psplit = path.split(",");
-    for(int a=0;a<psplit.size();a++) {
-        l.path.push_back(psplit[a].toInt());
+    QString rawPaths = path;
+    QStringList rawSplit = rawPaths.split(";");
+    for(int i=0;i<rawSplit[0].toInt();i++) {
+        Path tmpPath;
+        QString p = rawSplit[i+1];
+        QStringList split = p.split(',');
+        for(int i=0;i<split.size();i++) {
+            tmpPath.path.push_back(split[i].toInt());
+        }
+        l.paths.push_back(tmpPath);
     }
     map = msplit[4];
     msplit = map.split(",");
@@ -1275,8 +1377,6 @@ QPixmap FrmMain::createMapImage(int custom)
             }
             if((tiles[i]->type!=6&&!custom)||(custom&&tiles[i]->type!=6)) {
                 painter.drawPixmap(tiles[i]->rect(),p);
-            } else if(subActive==2) {
-                painter.drawPixmap(tiles[i]->rect(),mapTile);
             }
         //}
     }
@@ -1345,6 +1445,7 @@ void FrmMain::drawIngame(QPainter &painter)
         }
     }
     for(uint i=0;i<enemys.size();i++) {
+        painter.setOpacity(enemys[i]->opacity);
         painter.setBrush(Qt::red);
         switch(enemys[i]->type) {
         case 0: //fliesentischbesitzer
@@ -1373,6 +1474,7 @@ void FrmMain::drawIngame(QPainter &painter)
             break;
         }
         painter.drawEllipse(enemys[i]->rect());
+        painter.setOpacity(fade);
         if(enemys[i]->repost) {
             painter.setOpacity(((double)enemys[i]->repost/enemys[i]->maxRepost)*fade);
             painter.drawPixmap(enemys[i]->rect(),repostMark);
@@ -1469,11 +1571,14 @@ void FrmMain::drawIngame(QPainter &painter)
     if(DEBUG) {
         changeSize(painter,32,true);
         painter.setPen(Qt::blue);
-        for(uint i=0;i<path.size();i++) {
-            painter.drawText(tiles[path[i]]->rect(),QString::number(i));
+        for(uint i=0;i<paths.size();i++) {
+            Path tmpPath = paths[i];
+            for(uint a=0;a<tmpPath.path.size();a++) {
+                painter.drawText(tiles[tmpPath.path[a]]->rect(),QString::number(i));
+            }
         }
         for(uint i=0;i<enemys.size();i++) {
-            painter.drawLine(tiles[path[enemys[i]->cpos]]->rect().center(),enemys[i]->rect().center());
+            painter.drawLine(tiles[paths[enemys[i]->path].path[enemys[i]->cpos]]->rect().center(),enemys[i]->rect().center());
         }
     }
 }
@@ -1559,7 +1664,6 @@ void FrmMain::drawTowerMenu(QPainter &painter)
                 painter.drawPixmap(btnDmgRect,btnDmg);
                 drawBar(painter,towers[tnum],1);
             }
-
             if(towers[tnum]->hasRange) {
                 if(towerMenuSelected!=2) {
                     painter.setOpacity(0.6*fade);
@@ -1569,7 +1673,9 @@ void FrmMain::drawTowerMenu(QPainter &painter)
             }
 
             if(towers[tnum]->hasFirerate) {
-                painter.setOpacity(0.6*fade);
+                if(towerMenuSelected!=3) {
+                    painter.setOpacity(0.6*fade);
+                } else painter.setOpacity(fade);
             } else painter.setOpacity(fade);
             painter.drawPixmap(btnFirerateRect,btnFirerate);
             drawBar(painter,towers[tnum],3);
@@ -1693,7 +1799,7 @@ void FrmMain::drawTower(QRect pos, QPainter &painter, int tnum, bool info)
             painter.setPen(Qt::white);
             painter.drawText(QRect(25,785,550,200),Qt::AlignLeft,"Favoritentower:\n"
                                                                  "Verschießt Herzen auf Gegner\n"
-                                                                 "und friert sie ein");
+                                                                 "und verlangsamt diese ein");
         }
         painter.setPen(Qt::NoPen);
         painter.setBrush(neuschwuchtel);
@@ -1852,6 +1958,7 @@ void FrmMain::drawMainMenu(QPainter &painter)
     }
     painter.drawPixmap(startRect,startPx);
     painter.drawPixmap(editRect,editPx);
+    painter.drawPixmap(shopRect,shopPx);
     painter.drawPixmap(exitRect,exitPx);
     switch(subActive) {
     case 1: //play ausgewählt - levelanzeige
@@ -1939,6 +2046,9 @@ void FrmMain::drawMainMenu(QPainter &painter)
         painter.setOpacity(fade);
         break;
     }
+    painter.setPen(Qt::white);
+    changeSize(painter,32,true);
+    painter.drawText(5,1070,version);
 }
 
 void FrmMain::drawEditor(QPainter &painter)
@@ -1973,9 +2083,12 @@ void FrmMain::drawEditor(QPainter &painter)
     }
     //if(mCompileError) {
         painter.setOpacity(0.4*fade);
-        for(uint a=0;a<path.size();a++) {
-            painter.setBrush(Qt::red);
-            painter.drawRect(tiles[path[a]]->pos);
+        for(uint i=0;i<paths.size();i++) {
+            Path tmpPath = paths[i];
+            for(uint a=0;a<tmpPath.path.size();a++) {
+                painter.setBrush(Qt::red);
+                painter.drawRect(tiles[tmpPath.path[a]]->pos);
+            }
         }
         painter.setOpacity(fade);
     //}
@@ -2021,7 +2134,7 @@ void FrmMain::drawEditorMenu(QPainter &painter)
     } else {
         painter.drawPixmap(mPlayRect,mStopPx);
     }
-    if(!path.size()||mCompileError) painter.setOpacity(0.5*fade);
+    if(!paths.size()||mCompileError) painter.setOpacity(0.5*fade);
     painter.drawPixmap(mSaveRect,mSavePx);
     painter.setOpacity(fade);
 }
@@ -2036,19 +2149,26 @@ void FrmMain::towerMenuClicked(QRect pos)
 {
     int tnum = tiles[towerMenu]->towernum;
     if(tnum>-1) {//turm steht, upgrade
+        if(tnum>towers.size()-1) {
+            error_string("tnum",QString::number(towers.size()),QString::number(tnum));
+            return;
+        } else if(!towers[tnum]) {
+            error_string("tnum_null",QString::number(towers.size()),QString::number(tnum));
+            return;
+        }
         if(pos.intersects(btnDmgRect)&&towers[tnum]->hasDamage) { //dmg upgrade
             if(towers[tnum]->dmglvl<5) {
                 if(towerMenuSelected==1) { //kaufen
                     switch(towers[tnum]->type) {
                     case 1: //minus
                     case 4: //benis
-                        towers[tnum]->dmg*=2;
+                        towers[tnum]->dmg+=10;
                         break;
                     case 2: //fav
-                        towers[tnum]->stun*=1.5;
+                        towers[tnum]->stun+=1000;
                         break;
                     case 3: //repost
-                        towers[tnum]->repost*=1.5;
+                        towers[tnum]->repost+=1000;
                         break;
                     }
                     towers[tnum]->dmglvl++;
@@ -2057,14 +2177,14 @@ void FrmMain::towerMenuClicked(QRect pos)
         } else if(pos.intersects(btnRangeRect)&&towers[tnum]->hasRange) { //range upgrade
             if(towers[tnum]->rangelvl<5) {
                 if(towerMenuSelected==2) { //kaufen
-                    towers[tnum]->range*=1.10;
+                    towers[tnum]->range+=10;
                     towers[tnum]->rangelvl++;
                 } else towerMenuSelected = 2;
             }
         } else if(pos.intersects(btnFirerateRect)&&towers[tnum]->hasFirerate) { //feuerrate upgrade
             if(towers[tnum]->ratelvl<5) {
                 if(towerMenuSelected==3) { //kaufen
-                    towers[tnum]->reload*=0.9;
+                    towers[tnum]->reload*=0.85;
                     towers[tnum]->ratelvl++;
                 } else towerMenuSelected = 3;
             }
@@ -2248,9 +2368,10 @@ void FrmMain::delClicked()
 void FrmMain::backMenuClicked(QRect pos)
 {
     if(pos.intersects(btnContinueRect)) { //Weiterspielen
-        fade = 1;
         backMenu = false;
-        gamePaused = false;
+        if(playingSpeed) {
+            gamePaused = false;
+        }
     } else if(pos.intersects(btnBackRect)) { //Zurück
         if((active == 2 && mapSaved) || active != 2) {
             backMenu = false;
@@ -2295,7 +2416,18 @@ void FrmMain::editorClicked(QRect pos, QRect aPos)
                 QMessageBox::information(this,"Fehler","Kein Ziel gefunden!");
                 break;
             default: //alles ok
-                mapPlaying = true;
+                bool ok=false;
+                for(uint i=0;i<tiles.size();i++) {
+                    if(tiles[i]->type==2) {
+                        ok = true;
+                        break;
+                    }
+                }
+                if(ok) {
+                    mapPlaying = true;
+                } else {
+                    QMessageBox::information(this,"Fehler","Es muss mindestens 1 Turmplatz vorhanden sein!");
+                }
                 break;
             }
         } else {
@@ -2331,12 +2463,10 @@ void FrmMain::editorClicked(QRect pos, QRect aPos)
             }
         } else {
             l = levels[mapSaved];
-            l.path.clear();
+            l.paths.clear();
             l.map.clear();
         }
-        for(uint i=0;i<this->path.size();i++) {
-            l.path.push_back(path[i]);
-        }
+        l.paths = paths;
         for(uint i=0;i<tiles.size();i++) {
             l.map.push_back(tiles[i]->type);
         }
@@ -2384,10 +2514,10 @@ void FrmMain::editorClicked(QRect pos, QRect aPos)
                         tiles[i]->type = editorSelected;
                     }
                 } else if(editorSelected==4) {
-                    if(!enemyBaseCount) {
+                    //if(!enemyBaseCount) {
                         enemyBaseCount++;
                         tiles[i]->type = editorSelected;
-                    }
+                    //}
                 } else {
                     if(tiles[i]->type==5) ownBaseCount--;
                     if(tiles[i]->type==4) enemyBaseCount--;
@@ -2434,7 +2564,7 @@ void FrmMain::loadUserData()
 
 void FrmMain::loadMap(QString name, int custom, int width, int height, QString path)
 {
-    reset(custom);
+    loaded = true;
     QString map;
     switch (custom) {
     case 0: //standard
@@ -2453,25 +2583,15 @@ void FrmMain::loadMap(QString name, int custom, int width, int height, QString p
         mapheight = split2[2].toInt()*80;
         map = split2[4];
         data = split2[3];
-        QStringList split = data.split(',');
-        this->path.resize(0);
-        for(int i=0;i<split.size();i++) {
-            this->path.push_back(split[i].toInt());
-            /*if(i>0) {
-                int dir=1;
-                if(this->tiles[path[i-1]]->pos.x()==tiles[path[i]]->pos.x()) { //oben oder unten
-                    if(this->tiles[path[i-1]]->pos.y()<this->tiles[path[i]]->pos.y()) { //oben
-                        dir = 4;
-                    } else { //unten
-                        dir = 2;
-                    }
-                } else { //links oder rechts
-                    if(this->tiles[path[i-1]]->pos.x()>this->tiles[path[i]]->pos.x()) { //rechts
-                        dir = 3;
-                    }
-                }
-                dirs.push_back(dir);
-            }*/
+        QStringList rawSplit = data.split(";");
+        for(int i=0;i<rawSplit[0].toInt();i++) {
+            Path tmpPath;
+            QString p = rawSplit[i+1];
+            QStringList split = p.split(',');
+            for(int i=0;i<split.size();i++) {
+                tmpPath.path.push_back(split[i].toInt());
+            }
+            paths.push_back(tmpPath);
         }
         break;
     }
@@ -2505,7 +2625,7 @@ void FrmMain::loadMap(QString name, int custom, int width, int height, QString p
                     t->ran = Engine::random(0,2);
                     break;
                 }
-                t->initPhysics(world);
+                createTileBodies.push_back(t);
                 tiles.push_back(t);
             }
         }
@@ -2532,11 +2652,11 @@ void FrmMain::loadMap(QString name, int custom, int width, int height, QString p
                     ownBaseCount++;
                     break;
                 }
-                t->initPhysics(world);
+                createTileBodies.push_back(t);
                 tiles.push_back(t);
             }
         }
-        this->path = levels[subLevelSelected-1].path;
+        this->paths = levels[subLevelSelected-1].paths;
     }
     viewRect = QRect(0,0,mapwidth,mapheight);
     mapPx = createMapImage(custom);
@@ -2587,28 +2707,39 @@ void FrmMain::loadGameSave()
         QTextStream in;
         in.setDevice(&file);
         QString data = in.readAll();
+        /*QClipboard *clipboard = QApplication::clipboard();
+        clipboard->setText(data);
+        clipboard->deleteLater();*/
         if(!data.size()) {
             error_save(file);
             return;
         }
         data.remove("\r\n");
         QStringList split = data.split("#");
-        if(split.size()<9||split[1].size()<1) {
+        if(split.size()<9||split[2].size()<1) {
             error_save(file);
             return;
         }
+        QString mapversion = split[0];
+        if(mapversion!=version) {
+            if(!mapversion.contains(".")) {
+                error_save(file);
+                return;
+            }
+            //Mapversion ungleich, evtl konvertierung
+        }
         //Map laden
-        switch(split[0].toInt()) {
+        switch(split[1].toInt()) {
         case 0: //standardlevel
-            loadMap(split[1]);
+            loadMap(split[2]);
             break;
         case 1: //userlevel
-            subLevelSelected = split[1].toInt();
+            subLevelSelected = split[2].toInt();
             loadMap("",2);
             break;
         }
         //Türme laden
-        QString s = split[2];
+        QString s = split[3];
         QStringList towerList = s.split(";");
         for(int i=0;i<towerList.size()-1;i++) {
             QString rawData = towerList[i];
@@ -2643,12 +2774,16 @@ void FrmMain::loadGameSave()
             t->speedlvl = data[9].toInt();
             t->repost = data[10].toInt();
             t->projectilePxID = data[11].toInt();
-            t->saveNum = data[12].toInt();
+            t->dmgprice = data[12].toInt();
+            t->rateprice = data[13].toInt();
+            t->rangeprice = data[14].toInt();
+            t->speedprice = data[15].toInt();
+            t->saveNum = data[16].toInt();
             towers.push_back(t);
             tiles[data[3].toInt()]->towernum = towers.size()-1;
         }
         //Gegner laden
-        s = split[3];
+        s = split[4];
         QStringList enemyList = s.split(";");
         for(int i=0;i<enemyList.size()-1;i++) {
             QString rawData = enemyList[i];
@@ -2661,16 +2796,18 @@ void FrmMain::loadGameSave()
             e->maxStun = data[4].toInt();
             e->ospeed = data[5].toDouble();
             e->pos = QRectF(data[6].toDouble(),data[7].toDouble(),data[8].toDouble(),data[9].toDouble());
-            e->preHealth = e->health;//data[10].toInt(); später falls projektile
+            e->preHealth = data[10].toInt();// später falls projektile
             e->speed = data[11].toDouble();
             e->stunned = data[12].toInt();
             e->repost = data[13].toInt();
             e->soonBanned = data[14].toInt();
             e->type = data[15].toInt();
+            e->opacity = data[16].toDouble();
+            e->path = data[17].toInt();
+            e->price = data[18].toInt();
             createBodies.push_back(e);
             //enemys.push_back(e);
         }
-        qDebug()<<enemys.size();
         //Turm Pointerzuweisung
         for(uint i=0;i<towers.size();i++) {
             if(towers[i]->type==5&&towers[i]->saveNum>-1) {
@@ -2679,7 +2816,7 @@ void FrmMain::loadGameSave()
         }
         //------
         //Projektile
-        s = split[4];
+        s = split[5];
         QStringList projectileList = s.split(";");
         for(int i=0;i<projectileList.size()-1;i++) {
             QString rawData = projectileList[i];
@@ -2711,7 +2848,7 @@ void FrmMain::loadGameSave()
         }
         //------
         //Welle laden
-        s = split[5];
+        s = split[6];
         QStringList waveSplit = s.split(",");
         for(int i=0;i<waveSplit.size();i++) {
             currentWave.fliesen = waveSplit[0].toInt();
@@ -2725,8 +2862,9 @@ void FrmMain::loadGameSave()
         }
         //------
         //Allgemeines Zeugs laden
-        this->benis = split[6].toInt();
-        this->waveCount = split[7].toInt();
+        this->benis = split[7].toInt();
+        this->waveCount = split[8].toInt();
+        this->internalWaveCount = split[9].toInt();
         file.close();
     }
 }
@@ -2760,7 +2898,7 @@ void FrmMain::loadWaves()
 {
     // 8 2
     //waves.push_back(Wave(10,10,10,10,10,10,10,10));
-    waves.push_back(Wave(5,2,0,0,0,10,0,0)); //Welle 1
+    waves.push_back(Wave(10,0,0,0,0,0,0,0)); //Welle 1
     waves.push_back(Wave(8,4,2,0,0,0,0,0)); //Welle 2
     waves.push_back(Wave(10,4,2,2,0,0,0,0)); //Welle 3
     waves.push_back(Wave(15,4,2,0,0,0,0,0)); //Welle 4
@@ -2770,7 +2908,7 @@ void FrmMain::loadWaves()
     waves.push_back(Wave(10,5,5,5,5,2,1,0)); //Welle 7
     waves.push_back(Wave(100,50,0,0,0,0,0,0)); //Welle 8;
     waves.push_back(Wave(0,0,0,0,20,10,5,2)); //Welle 9
-    waves.push_back(Wave(200,200,200,50,50,30,20,5)); //Welle 10
+    waves.push_back(Wave(10,10,10,50,50,30,20,5)); //Welle 10
 }
 
 void FrmMain::saveGameSave()
@@ -2782,6 +2920,7 @@ void FrmMain::saveGameSave()
     file.open(QIODevice::WriteOnly|QIODevice::Truncate);
     QTextStream out(&file);
     int t = 0;
+    out << version << "#";
     if(mName=="") t = 1;
     out << QString::number(t) << "#";
     if(t) {
@@ -2809,17 +2948,20 @@ void FrmMain::saveGameSave()
     }
     out << "#";
     for(uint i=0;i<projectiles.size();i++) {
-        int saveNum = -1;
-        for(uint a=0;a<enemys.size();a++) {
-            if(enemys[a]==projectiles[i]->target) {
-                saveNum = a;
-                break;
+        if(projectiles[i]->type != 2) { //wenn nicht text
+            int saveNum = -1;
+            for(uint a=0;a<enemys.size();a++) {
+                if(enemys[a]==projectiles[i]->target) {
+                    saveNum = a;
+                    break;
+                }
             }
+            out << projectiles[i]->toString() << "," << QString::number(saveNum) << ";";
         }
-        out << projectiles[i]->toString() << "," << QString::number(saveNum) << ";";
     }
     out << "#" << currentWave.toString();
     out << "#" << QString::number(this->benis) << "#" << QString::number(waveCount) << "#";
+    out << QString::number(internalWaveCount) << "#";
     file.close();
     hasPlayingSave = true;
 }
@@ -2832,15 +2974,20 @@ void FrmMain::saveMaps()
     file.setFileName(path);
     file.open(QIODevice::WriteOnly|QIODevice::Truncate);
     QTextStream out(&file);
+    QString pathStrings;
     for(uint i=3;i<levels.size();i++) {
-        //FORMAT NAME#BREITE#HÖHE#PFAD#MAPDATA|
+        //FORMAT NAME#BREITE#HÖHE#PFADE#MAPDATA|
         QString data = levels[i].lvlName + "#" + QString::number(levels[i].width) + "#" + QString::number(levels[i].height) + "#";
-        QString tp;
-        for(uint a=0;a<levels[i].path.size();a++) {
-            tp.append(QString::number(levels[i].path[a])+",");
+        for(uint b=0;b<levels[i].paths.size();b++) {
+            QString tp;
+            for(uint a=0;a<levels[i].paths[b].path.size();a++) {
+                tp.append(QString::number(levels[i].paths[b].path[a])+",");
+            }
+            tp.remove(tp.size()-1,1);
+            pathStrings += tp + ";";
         }
-        tp.remove(tp.size()-1,1);
-        data.append(tp+"#");
+        pathStrings.remove(pathStrings.size()-1,1);
+        data.append(QString::number(levels[i].paths.size())+";"+pathStrings+"#");
         QString map;
         for(uint b=0;b<levels[i].map.size();b++) {
             map.append(QString::number(levels[i].map[b])+",");
@@ -2860,7 +3007,7 @@ void FrmMain::saveOptions()
     file.setFileName(path);
     file.open(QIODevice::WriteOnly|QIODevice::Truncate);
     QTextStream out(&file);
-    out << QString::number(soundEnabled) << "#";
+    out << QString::number(soundEnabled) << "#" << newestPost << "#";
     file.close();
 }
 
@@ -2883,109 +3030,152 @@ void FrmMain::loadOptions()
         if(data.size()) {
             QStringList split = data.split("#");
             soundEnabled = split[0].toInt();
+            if(split[1].size()>3) {
+                newestPost = split[1];
+            }
         }
         file.close();
     }
 }
 
+void FrmMain::changePlaylist(int playlist)
+{
+    music->stop();
+    switch(playlist) {
+    case 0: //menu
+        music->setPlaylist(playlist_menu);
+        playlist_menu->setCurrentIndex(Engine::random(0,2));
+        break;
+    case 1:
+        music->setPlaylist(playlist_game);
+        playlist_game->setCurrentIndex(Engine::random(0,2));
+        break;
+    }
+}
+
 int FrmMain::createPath()
 {
-    path.resize(0);
+    paths.resize(0);
     begin = -1;
+    std::vector <int> starts;
     int maxX = mapwidth/80;
     for(uint i=0;i<tiles.size();i++) {
         if(tiles[i]->type==4) { //spawn
-            begin = i;
+            starts.push_back(i);
         }
     }
-    if(begin==-1) {
+    if(!starts.size()) {
         return -1; //kein start
     }
-    path.push_back(begin);
-    bool end=false;
-    int last=-1;
-    int current = begin;
-    int tSize = tiles.size();
-    while(!end) {
-        int next;
-        int ok = 0;
-        next = current+1; //nach rechts
-        if(next>-1&&next!=last&&next<tSize&&
-                ((next/maxX)==(current/maxX))) {
-            if(tiles[next]->type==1) {
-                ok = 1;
-            } else if(tiles[next]->type==5) {
-                ok = 2;
-            }
-        }
-        if(ok) { //nach rechts bestätigt
-            path.push_back(next);
-            last = current;
-            current = next;
-            if(ok==2) {
-                end = true;
-            }
-        } else {
-            next = current+maxX; //nach unten
-            if(next>-1&&next!=last&&next<tSize) {
+    for(uint i=0;i<starts.size();i++) {
+        Path tmpPath;
+        int begin = starts[i];
+        tmpPath.path.push_back(begin);
+        bool end=false;
+        int last=-1;
+        int current = begin;
+        int tSize = tiles.size();
+        while(!end) {
+            int next;
+            int ok = 0;
+            next = current+1; //nach rechts
+            if(next>-1&&next!=last&&next<tSize&&
+                    ((next/maxX)==(current/maxX))) {
                 if(tiles[next]->type==1) {
                     ok = 1;
                 } else if(tiles[next]->type==5) {
                     ok = 2;
                 }
             }
-            if(ok) { //nach unten bestätigt
-                path.push_back(next);
+            if(ok) { //nach rechts bestätigt
+                tmpPath.path.push_back(next);
                 last = current;
                 current = next;
                 if(ok==2) {
                     end = true;
                 }
             } else {
-                next = current-1;
-                if(next>-1&&next!=last&&next<tSize&&
-                        ((next/maxX)==(current/maxX))) {
+                next = current+maxX; //nach unten
+                if(next>-1&&next!=last&&next<tSize) {
                     if(tiles[next]->type==1) {
                         ok = 1;
                     } else if(tiles[next]->type==5) {
                         ok = 2;
                     }
                 }
-                if(ok) { //nach links bestätigt
-                    path.push_back(next);
+                if(ok) { //nach unten bestätigt
+                    tmpPath.path.push_back(next);
                     last = current;
                     current = next;
                     if(ok==2) {
                         end = true;
                     }
                 } else {
-                    next = current-maxX;
-                    if(next>-1&&next!=last&&next<tSize) {
+                    next = current-1;
+                    if(next>-1&&next!=last&&next<tSize&&
+                            ((next/maxX)==(current/maxX))) {
                         if(tiles[next]->type==1) {
                             ok = 1;
                         } else if(tiles[next]->type==5) {
                             ok = 2;
                         }
                     }
-                    if(ok) {
-                        path.push_back(next);
+                    if(ok) { //nach links bestätigt
+                        tmpPath.path.push_back(next);
                         last = current;
                         current = next;
                         if(ok==2) {
-                            end=true;
+                            end = true;
                         }
                     } else {
-                        end=true;
+                        next = current-maxX;
+                        if(next>-1&&next!=last&&next<tSize) {
+                            if(tiles[next]->type==1) {
+                                ok = 1;
+                            } else if(tiles[next]->type==5) {
+                                ok = 2;
+                            }
+                        }
+                        if(ok) {
+                            tmpPath.path.push_back(next);
+                            last = current;
+                            current = next;
+                            if(ok==2) {
+                                end=true;
+                            }
+                        } else {
+                            end=true;
+                        }
+                    }
+                }
+            }
+            if(tmpPath.path.size()>tiles.size()) {
+                return -2; //kein weg gefunden
+            }
+            if(paths.size()) {
+                for(uint a=0;a<paths.size();a++) {
+                    Path p = paths[a];
+                    bool take=false;
+                    for(uint b=0;b<p.path.size();b++) {
+                        if(take) {
+                            tmpPath.path.push_back(p.path[b]);
+                        }
+                        if(p.path[b]==tmpPath.path.back()) {
+                            //pfad bereits vorhanden -> übernehmen
+                            take = true;
+                        }
+                    }
+                    if(take) {
+                        end = true;
+                        break;
                     }
                 }
             }
         }
-        if(path.size()>tiles.size()) {
-            return -2; //kein weg gefunden
+        if(tiles[tmpPath.path[tmpPath.path.size()-1]]->type!=5) {
+            return -2; //start = ziel
         }
-    }
-    if(tiles[path[path.size()-1]]->type!=5) {
-        return -2; //start = ziel
+        paths.push_back(tmpPath);
     }
     return 0; //alles ok
     //path.erase(path.begin()+path.size()-1);
@@ -3131,11 +3321,7 @@ void FrmMain::mouseReleaseEvent(QMouseEvent *e)
         fdir = 0;
         if(playingSpeed!=1) {
             playingSpeed = 1;
-            QMetaObject::invokeMethod(t_physics,"start",Q_ARG(int,5));
-            QMetaObject::invokeMethod(t_projectile_full,"start",Q_ARG(int,200));
-            QMetaObject::invokeMethod(t_projectile,"start",Q_ARG(int,10));
-            QMetaObject::invokeMethod(t_main,"start",Q_ARG(int,10));
-            QMetaObject::invokeMethod(t_wave,"start",Q_ARG(int,t_wave->interval()*2));
+            resetTimers();
         }
         QMetaObject::invokeMethod(t_animation,"start",Q_ARG(int,5));
         return;
@@ -3144,7 +3330,9 @@ void FrmMain::mouseReleaseEvent(QMouseEvent *e)
         if(mRectRaw.intersects(btnPlayingSpeedRect)&&!playingSpeed) {
             gamePaused = false;
             playingSpeed = 1;
+            if(loaded) loaded = false;
             playingSpeedChanged = true;
+            return;
         } else if(backMenu){
             backMenuClicked(mRectRaw);
             return;
@@ -3197,18 +3385,18 @@ void FrmMain::mouseReleaseEvent(QMouseEvent *e)
             switch(playingSpeed) {
             case 1: //normal
                 //QMetaObject::invokeMethod(t_physics,"start",Q_ARG(int,5));
-                QMetaObject::invokeMethod(t_projectile_full,"start",Q_ARG(int,100));
+                QMetaObject::invokeMethod(t_projectile_full,"start",Q_ARG(int,50));
                 QMetaObject::invokeMethod(t_projectile,"start",Q_ARG(int,5));
                 QMetaObject::invokeMethod(t_main,"start",Q_ARG(int,5));
-                //QMetaObject::invokeMethod(t_wave,"start",Q_ARG(int,t_wave->interval()/2));
+                QMetaObject::invokeMethod(t_wave,"start",Q_ARG(int,50));
                 playingSpeed = 2;
                 break;
             case 2: //schnell
                 //QMetaObject::invokeMethod(t_physics,"start",Q_ARG(int,5));
-                QMetaObject::invokeMethod(t_projectile_full,"start",Q_ARG(int,200));
+                QMetaObject::invokeMethod(t_projectile_full,"start",Q_ARG(int,100));
                 QMetaObject::invokeMethod(t_projectile,"start",Q_ARG(int,10));
                 QMetaObject::invokeMethod(t_main,"start",Q_ARG(int,10));
-                //QMetaObject::invokeMethod(t_wave,"start",Q_ARG(int,t_wave->interval()*2));
+                QMetaObject::invokeMethod(t_wave,"start",Q_ARG(int,100));
                 playingSpeed = 1;
                 break;
             }
@@ -3253,12 +3441,10 @@ void FrmMain::keyPressEvent(QKeyEvent *e)
         if((active==1&&!isGameOver)||active==2) { //Im Spiel oder Editor
             if(!backMenu) {
                 backMenu = true;
-                fade = 0.6;
                 gamePaused = true;
                 mapPlaying = false;
             } else {
                 backMenu = false;
-                fade = 1;
                 gamePaused = false;
             }
         } else if(!active) {
@@ -3274,6 +3460,7 @@ void FrmMain::keyPressEvent(QKeyEvent *e)
 void FrmMain::paintEvent(QPaintEvent *e)
 {
     if(!key) return;
+    mutex.lock();
     try {
         Q_UNUSED(e)
         if(DEBUG) {
@@ -3291,7 +3478,6 @@ void FrmMain::paintEvent(QPaintEvent *e)
         painter.setBrush(grau);
         painter.translate(transX-shakeX,transY-shakeY);
         painter.drawRect(viewRect);
-        painter.setOpacity(fade);
         switch(active) {
         case 0: //menu
             //iwas blockiert den thread bei active = 1 für paar sec
@@ -3302,6 +3488,12 @@ void FrmMain::paintEvent(QPaintEvent *e)
                 painter.drawText(420,400,"Lade...");
             } else {
                 drawMainMenu(painter);
+            }
+            if(outdated) {
+                changeSize(painter,32,true);
+                painter.setPen(Qt::magenta);
+                painter.drawText(QRect(0,1040,1920,40),Qt::AlignRight,"Update ist im Playstore und auf Github verfügbar!");
+                painter.setPen(Qt::NoPen);
             }
             break;
         case 1: //ingame
@@ -3327,6 +3519,16 @@ void FrmMain::paintEvent(QPaintEvent *e)
         if(backMenu) {
             painter.setOpacity(fade+0.4);
             drawBackMenu(painter);
+        }
+        if(blendRectOpacity) {
+            painter.setBrush(grau);
+            painter.setOpacity(blendRectOpacity);
+            if(viewRect.width()>1920) {
+                painter.drawRect(-100,-100,viewRect.width()+200,viewRect.height()+200);
+            } else {
+                painter.drawRect(-100,-100,2100,1200);
+            }
+            painter.setOpacity(1);
         }
         changeSize(painter,32,true);
         painter.setPen(Qt::magenta);
@@ -3356,6 +3558,7 @@ void FrmMain::paintEvent(QPaintEvent *e)
                 painter.drawRect(x,325-y,5.0,2.5);
             }
         }
+        mutex.unlock();
     } catch(std::exception e) {
 
     }
@@ -3363,7 +3566,6 @@ void FrmMain::paintEvent(QPaintEvent *e)
 
 void FrmMain::wheelEvent(QWheelEvent *e)
 {
-    //für später vllt
     if(active==0||(gamePaused&&backMenu)||isGameOver) return;
     int angle = e->angleDelta().y();
     double currentScaleFactor;

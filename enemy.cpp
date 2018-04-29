@@ -7,12 +7,13 @@ Enemy::Enemy()
     physicsInitialized = false;
 }
 
-void Enemy::init(QRectF pos, double speed, int type, int cpos, int health)
+void Enemy::init(QRectF pos, double speed, int type, int cpos, int health, int path, int price)
 {
     stunned = 0;
     maxStun = 0;
     soonBanned = false;
     physicsInitialized = false;
+    this->price = price;
     this->pos = pos;
     this->cpos = cpos;
     this->health = health;
@@ -22,6 +23,7 @@ void Enemy::init(QRectF pos, double speed, int type, int cpos, int health)
     this->ospeed = speed;
     this->repost = 0;
     this->type = type;
+    this->path = path;
     isUsed = true;
     dir = 1; //rechts
 }
@@ -40,6 +42,7 @@ void Enemy::initPhysics(b2World *world)
     fixtureDef.shape = &circleShape;
     fixtureDef.density = 0;
     body->CreateFixture(&fixtureDef);
+    updatePos();
     physicsInitialized = true;
 }
 
@@ -48,7 +51,8 @@ void Enemy::moveBy(double xv, double yv)
     if(!physicsInitialized) return;
     //qDebug()<<body->GetWorld()->IsLocked();
     body->SetLinearVelocity(b2Vec2(xv*10,yv*10));
-    //pos.moveTo(pos.x()+xv,pos.y()+yv);
+    updatePos();
+    if(opacity<1) opacity += 0.0075;
 }
 
 void Enemy::setHealth(int health)
@@ -102,15 +106,17 @@ void Enemy::updatePos()
 
 QRect Enemy::rect()
 {
-    return QRect(pos.x(),pos.y(),pos.width(),pos.height());
+    //return QRect(pos.x(),pos.y(),pos.width(),pos.height());
+    return QRect(body->GetPosition().x-pos.width()/2,body->GetPosition().y-pos.height()/2,pos.width(),pos.height());
 }
 
 QRectF Enemy::rectF(int a)
 {
+    Q_UNUSED(a);
     if(!a) {
-        return pos;
+        return QRectF(body->GetPosition().x-pos.width()/2,body->GetPosition().y-pos.height()/2,pos.width(),pos.height());
     } else {
-        return QRectF(pos.x(),pos.y(),pos.width(),pos.height());
+        return QRectF(body->GetPosition().x,body->GetPosition().y,pos.width(),pos.height());
     }
 }
 
@@ -129,5 +135,8 @@ QString Enemy::toString()
             QString::number(stunned) + "," +
             QString::number(repost) + "," +
             QString::number(soonBanned) + "," +
-            QString::number(type);
+            QString::number(type) + "," +
+            QString::number(opacity) + "," +
+            QString::number(path) + "," +
+            QString::number(price);
 }

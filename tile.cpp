@@ -4,6 +4,7 @@ Tile::Tile()
 {
     towernum = -1;
     ran = 0;
+    body = nullptr;
 }
 
 QRect Tile::rect()

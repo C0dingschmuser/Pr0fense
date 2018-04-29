@@ -51,8 +51,6 @@
         <file>data/images/towers/coin.png</file>
         <file>data/images/ui/herz.png</file>
         <file>data/images/ui/beenden.png</file>
-        <file>data/music/track1.mp3</file>
-        <file>data/music/track2.mp3</file>
         <file>data/images/ui/weiterspielen_grau.png</file>
         <file>data/images/ui/sound0.png</file>
         <file>data/images/ui/sound1.png</file>
@@ -61,5 +59,8 @@
         <file>data/images/ui/stop.png</file>
         <file>data/images/ui/superfast.png</file>
         <file>data/images/ui/waves.png</file>
+        <file>data/images/ui/shop.png</file>
+        <file>data/maps/map2.dat</file>
+        <file>data/images/maps/map2.png</file>
     </qresource>
 </RCC>

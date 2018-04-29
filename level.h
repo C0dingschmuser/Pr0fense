@@ -3,12 +3,13 @@
 #include <QPixmap>
 #include <QString>
 #include <QRect>
+#include "path.h"
 
 class Level
 {
 public:
     Level();
-    std::vector <int> path;
+    std::vector <Path> paths;
     std::vector <int> map;
     QPixmap lvlImage;
     QRect levelRect;
@@ -17,6 +18,7 @@ public:
     int height = 0;
     QString lvlName;
     QString getMapString();
+    int getPathNum(int start);
 };
 
 #endif // LEVEL_H

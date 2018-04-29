@@ -32,6 +32,10 @@ public:
     int ratelvl = 1;
     int rangelvl = 1;
     int speedlvl = 1;
+    int dmgprice;
+    int rateprice;
+    int rangeprice;
+    int speedprice;
     int tnum = -1;
     QString name;
     QRect rect();

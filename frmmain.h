@@ -11,6 +11,7 @@
 #include <QPixmap>
 #include <QTouchEvent>
 #include <QtConcurrent/QtConcurrent>
+#include <QFuture>
 #include <QtMath>
 #include <QInputDialog>
 #include <QMessageBox>
@@ -21,6 +22,8 @@
 #include <QMediaPlayer>
 #include <QMediaPlaylist>
 #include <QDir>
+#include <QDesktopServices>
+#include <QClipboard>
 #include "Box2D/Box2D.h"
 #include "tower.h"
 #include "objectpool.h"
@@ -28,6 +31,8 @@
 #include "engine.h"
 #include "level.h"
 #include "wave.h"
+#include "shop.h"
+#include "path.h"
 #ifdef Q_OS_ANDROID
 #include "lockhelper.h"
 #endif
@@ -49,12 +54,19 @@ private:
 #ifdef Q_OS_ANDROID
     QInAppStore *store;
 #endif
+    const QString version = "0.5";
+    QString newestPost = "2519102";
+    bool newPost = false;
     b2World *world=nullptr;
     b2Body *wall1=nullptr,*wall2=nullptr,*wall3=nullptr,*wall4=nullptr;
     QMediaPlayer *music;
-    QMediaPlaylist *playlist;
+    QMediaPlaylist *playlist_game;
+    QMediaPlaylist *playlist_menu;
+    QTcpSocket *server;
+    const QString serverIP = "flatterfogel.ddns.net";
+    bool outdated = false;
     QMutex mutex;
-    QDate latestTestingDate = QDate(2018,4,24);
+    QDate latestTestingDate = QDate(2018,5,01);
     bool DEBUG=false;
     QElapsedTimer timerD;
     QElapsedTimer timerM;
@@ -85,7 +97,7 @@ private:
     std::vector <Projectile*> projectiles;
     std::vector <Tile*> tiles;
     Tile *chosenTile = NULL;
-    std::vector <int> path;
+    std::vector <Path> paths;
     std::vector <QString> spruch;
     std::vector <QPixmap> pathTextures;
     std::vector <QPixmap> lvlPreviews;
@@ -95,6 +107,7 @@ private:
     std::vector <double> frameTimes;
     std::vector <b2Body*> delBodies;
     std::vector <Enemy*> createBodies;
+    std::vector <Tile*> createTileBodies;
     QPixmap mapTile = QPixmap(":/data/images/maptile.png");
     QPixmap turmtile = QPixmap(":/data/images/turmtile.png");
     QPixmap emptytile = QPixmap(":/data/images/empty.png");
@@ -133,6 +146,7 @@ private:
     QPixmap startPx = QPixmap(":/data/images/ui/start.png");
     QPixmap editPx = QPixmap(":/data/images/ui/editor.png");
     QPixmap exitPx = QPixmap(":/data/images/ui/beenden.png");
+    QPixmap shopPx = QPixmap(":/data/images/ui/shop.png");
     QPixmap enemyPx = QPixmap(":/data/images/enemy.png");
     QPixmap pr0coinPx = QPixmap(":/data/images/towers/coin.png");
     QPixmap baseHerzPx = QPixmap(":/data/images/ui/herz.png");
@@ -187,6 +201,7 @@ private:
     int zooming = 0;
     bool pressed = false;
     bool backMenu = false;
+    bool physicsPaused = false;
     int moved = 0;
     //Währung
     int benis = 0;
@@ -196,7 +211,9 @@ private:
     bool resetPos = false;
     int towerMenu = -1;
     int towerMenuSelected = 0;
+    int delAll = 0;
     double fade = 1;
+    double blendRectOpacity = 0;
     int fdir = 0;
     QRectF target;
     QRect towerMenuRect = QRect(0,150,600,800);
@@ -213,7 +230,8 @@ private:
     //Hauptmenü
     QRect startRect = QRect(50,500,400,89);
     QRect editRect = QRect(50,600,400,89);
-    QRect exitRect = QRect(50,700,400,89);
+    QRect shopRect = QRect(50,700,400,89);
+    QRect exitRect = QRect(50,800,400,89);
     //283 x 413
     QRect btnContinueRect = QRect(677,413,566,127);
     QRect btnContinueMenuRect = QRect(50,400,400,89);
@@ -228,6 +246,8 @@ private:
     int enemyBaseCount = 0;
     int ownBaseCount = 0;
     int waveCount;
+    int internalWaveCount;
+    int chosenpath = 0;
     Wave currentWave;
     bool mapPlaying = false;
     bool mediumUnlocked = true;
@@ -255,10 +275,10 @@ private:
     //</Standard>
     //DEBUG
     bool suspended = false;
+    bool loaded = false;
     bool error=false;
     const double NANO_TO_MILLI = 1000000.0;
-    const uint mainLevels = 2;
-    const QString serverIP = "flatterfogel.ddns.net";
+    const uint mainLevels = 3;
     double tmainMS = 0;
     double tdrawMS = 0;
     double twavespeedMS = 0;
@@ -268,6 +288,7 @@ private:
     int basehp = 75;
     //</BASE>
     void initPhysics();
+    void resetTimers();
     void checkPush(b2Body *delBody);
     void createBounds();
     void drawIngame(QPainter &painter);
@@ -297,6 +318,7 @@ private:
     void saveMaps();
     void saveOptions();
     void loadOptions();
+    void changePlaylist(int playlist);
     int createPath();
     void changeSize(QPainter &painter, int pixelSize, bool bold=false);
     void buyMinusTower();
@@ -307,12 +329,15 @@ private:
     void delEnemy(int pos);
     void delTower(int pos);
     void reset(int custom = 0);
-    void delAllEnemys();
+    void delAllEnemys(int a=0);
     void pauseGame();
+    void error_string(QString e1,QString e2,QString e3);
     void error_save(QFile &file);
-    bool checkColl(Enemy *target);
     int sendDataToServer(QString data);
+    int getEnemySizeByType(int type);
     QDate getServerDate();
+    void getStatus();
+    void newPostInfo();
 #ifdef Q_OS_ANDROID
     int purchaseMediumMap();
     int purchaseLargeMap();
