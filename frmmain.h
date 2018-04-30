@@ -176,7 +176,7 @@ private:
     //</Farben>
     //<Standard>
     double zoomScale = 0;
-    int minusTowerCost = 50, herzTowerCost = 40, repostTowerCost = 75, benisTowerCost = 100,
+    uint minusTowerCost = 50, herzTowerCost = 40, repostTowerCost = 75, benisTowerCost = 100,
         banTowerCost = 200;
     int shaking = 0;
     int shakeX=0, shakeY=0, shakeIntensity=3;
@@ -204,7 +204,7 @@ private:
     bool physicsPaused = false;
     int moved = 0;
     //Währung
-    int benis = 0;
+    unsigned long long benis = 0;
     int shekel = 0;
     //
     bool mapLoaded = false;
@@ -294,7 +294,7 @@ private:
     void drawIngame(QPainter &painter);
     void drawHUD(QPainter &painter);
     void drawTowerMenu(QPainter &painter);
-    void drawTower(QRect pos, QPainter &painter, int tnum=-1, bool info=false);
+    void drawTower(QRect pos, QPainter &painter, Tower *tmpTower=nullptr, int info=false);
     void drawBar(QPainter &painter, Tower *t, int num);
     void drawMainMenu(QPainter &painter);
     void drawEditor(QPainter &painter);
@@ -327,14 +327,16 @@ private:
     void buyBenisTower();
     void buyBanTower();
     void delEnemy(int pos);
-    void delTower(int pos);
+    void delTower(Tower *t);
     void reset(int custom = 0);
     void delAllEnemys(int a=0);
     void pauseGame();
     void error_string(QString e1,QString e2,QString e3);
     void error_save(QFile &file);
     int sendDataToServer(QString data);
-    int getEnemySizeByType(int type);
+    int getEnemySizeByType(int type=0);
+    int getHealth(bool max=true);
+    bool checkTimers(int type=0);
     QDate getServerDate();
     void getStatus();
     void newPostInfo();

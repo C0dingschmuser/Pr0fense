@@ -2,6 +2,7 @@
 #define TILE_H
 #include <QRectF>
 #include "Box2D/Box2D.h"
+#include "tower.h"
 
 class Tile
 {
@@ -10,6 +11,7 @@ public:
     QRectF pos;
     b2Body *body = nullptr;
     int type;
+    Tower *t = nullptr;
     int towernum;
     int ran;
     QRect rect();

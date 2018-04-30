@@ -163,7 +163,8 @@ DISTFILES += \
     android/build.gradle \
     android/gradle/wrapper/gradle-wrapper.properties \
     android/gradlew.bat \
-    android/google-services.json
+    android/google-services.json \
+    android/res/values/colors.xml
 
 ANDROID_PACKAGE_SOURCE_DIR = $$PWD/android
 

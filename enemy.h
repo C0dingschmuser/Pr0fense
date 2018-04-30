@@ -13,7 +13,7 @@ public:
     int stunned=0;
     int maxStun=0;
     bool isUsed = false;
-    bool soonBanned = false;
+    int soonBanned = 0;
     bool physicsInitialized = false;
     int repost = 0;
     int maxRepost = 0;

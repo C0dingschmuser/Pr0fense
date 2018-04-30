@@ -82,7 +82,7 @@ void Enemy::setRepost(int repostAmount)
 
 void Enemy::reduceHealth(int amount)
 {
-    if(repost) amount *= 1.5;
+    if(repost&&!soonBanned) amount *= 1.5;
     health -= amount;
     if(health<0) health = 0;
 }
@@ -107,6 +107,9 @@ void Enemy::updatePos()
 QRect Enemy::rect()
 {
     //return QRect(pos.x(),pos.y(),pos.width(),pos.height());
+    if(body==nullptr||!physicsInitialized) {
+        return QRect(pos.x(),pos.y(),pos.width(),pos.height());
+    }
     return QRect(body->GetPosition().x-pos.width()/2,body->GetPosition().y-pos.height()/2,pos.width(),pos.height());
 }
 
