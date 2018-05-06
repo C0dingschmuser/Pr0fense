@@ -60,8 +60,8 @@ private:
 #ifdef Q_OS_ANDROID
     QInAppStore *store;
 #endif
-    const QString version = "0.6";
-    QString newestPost = "2529621";
+    const QString version = "0.61";
+    QString newestPost = "2539504";
     bool newPost = false;
     b2World *world=nullptr;
     b2Body *wall1=nullptr,*wall2=nullptr,*wall3=nullptr,*wall4=nullptr;
