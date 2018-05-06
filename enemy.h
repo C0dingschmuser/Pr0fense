@@ -15,6 +15,8 @@ public:
     bool isUsed = false;
     int soonBanned = 0;
     bool physicsInitialized = false;
+    uint16_t ownCategoryBits;
+    uint16_t collidingCategoryBits;
     int repost = 0;
     int maxRepost = 0;
     int cpos; //Knoten von Weg
@@ -23,7 +25,8 @@ public:
     int preHealth;
     int maxHealth;
     int type = 0;
-    int path = 0;
+    int path = -1;
+    int animation = 0;
     int price;
     double speed;
     double ospeed; //originalgeschwindigkeit

@@ -41,6 +41,12 @@ namespace Ui {
 class FrmMain;
 }
 
+enum _entityCategory {
+    BOUNDARY =      0x0001,
+    NORMAL_ENEMY =  0x0002,
+    FLYING_ENEMY =  0x0004,
+};
+
 class FrmMain : public QOpenGLWidget
 {
     Q_OBJECT
@@ -54,8 +60,8 @@ private:
 #ifdef Q_OS_ANDROID
     QInAppStore *store;
 #endif
-    const QString version = "0.5";
-    QString newestPost = "2519102";
+    const QString version = "0.6";
+    QString newestPost = "2529621";
     bool newPost = false;
     b2World *world=nullptr;
     b2Body *wall1=nullptr,*wall2=nullptr,*wall3=nullptr,*wall4=nullptr;
@@ -67,7 +73,7 @@ private:
     bool outdated = false;
     QMutex mutex;
     QDate latestTestingDate = QDate(2018,5,01);
-    bool DEBUG=false;
+    bool DEBUG = false;
     QElapsedTimer timerD;
     QElapsedTimer timerM;
     QElapsedTimer timerP;
@@ -115,11 +121,14 @@ private:
     QPixmap ownbasePx = QPixmap(":/data/images/ownbase.png");
     QPixmap towerGroundPx = QPixmap(":/data/images/towers/base.png");
     QPixmap towerBasePx = QPixmap(":/data/images/towers/base2.png");
-    QPixmap towerFavBasePx = QPixmap(":/data/images/towers/baseFav.png");
     QPixmap towerRepostBasePx = QPixmap(":/data/images/towers/repost.png");
     QPixmap repostMark = QPixmap(":/data/images/towers/repost_mark.png");
     QPixmap herzPx = QPixmap(":/data/images/towers/herz.png");
     QPixmap minus = QPixmap(":/data/images/towers/minus.png");
+    QPixmap sniperPx = QPixmap(":/data/images/towers/sniper.png");
+    QPixmap minusTowerPx = QPixmap(":/data/images/towers/minusTower.png");
+    QPixmap favTowerPx = QPixmap(":/data/images/towers/favTower.png");
+    QPixmap flakTowerPx = QPixmap(":/data/images/towers/flak.png");
     QPixmap blus = QPixmap(":/data/images/towers/blus.png");
     QPixmap blus_blurred = QPixmap(":/data/images/towers/blus_blurred.png");
     QPixmap buyPx = QPixmap(":/data/images/ui/kaufen.png");
@@ -151,6 +160,7 @@ private:
     QPixmap pr0coinPx = QPixmap(":/data/images/towers/coin.png");
     QPixmap baseHerzPx = QPixmap(":/data/images/ui/herz.png");
     QPixmap wavesPx = QPixmap(":/data/images/ui/waves.png");
+    QPixmap rotorPx = QPixmap(":/data/images/rotor.png");
     //Playmenu
     QPixmap levelsPx = QPixmap(":/data/images/levels.png");
     QPixmap ownMapsPx = QPixmap(":/data/images/eigene.png");
@@ -161,6 +171,7 @@ private:
     QPixmap mPlayPx = QPixmap(":/data/images/ui/mplay.png");
     QPixmap mStopPx = QPixmap(":/data/images/ui/mstop.png");
     QPixmap mSavePx = QPixmap(":/data/images/ui/msave.png");
+    QPixmap mEditPx = QPixmap(":/data/images/ui/edit.png");
     QPixmap mapPx;
     //<Farben>
     QColor grau = QColor(22,22,24);
@@ -177,7 +188,7 @@ private:
     //<Standard>
     double zoomScale = 0;
     uint minusTowerCost = 50, herzTowerCost = 40, repostTowerCost = 75, benisTowerCost = 100,
-        banTowerCost = 200;
+        banTowerCost = 200, sniperTowerCost = 150, flakTowerCost = 100;
     int shaking = 0;
     int shakeX=0, shakeY=0, shakeIntensity=3;
     QFont f = QFont("Arial");
@@ -185,7 +196,7 @@ private:
     0 - Hauptmenü
     1 - Ingame
     2 - Mapeditor*/
-    int active = 0;
+    int active = -1;
     int subActive = 0;
     uint subActiveSelected = 0;
     uint subLevelSelected = 0;
@@ -195,6 +206,7 @@ private:
     int moveAn = 0;
     double transX = 0;
     double transY = 0;
+    bool accepted = false;
     int begin = -1;
     QPoint mPos;
     QPointF mid;
@@ -222,6 +234,8 @@ private:
     QRect repostTowerRect = QRect(400,200,150,150);
     QRect benisTowerRect = QRect(50,375,150,150);
     QRect banTowerRect = QRect(225,375,150,150);
+    QRect sniperTowerRect = QRect(400,375,150,150);
+    QRect flakTowerRect = QRect(50,550,150,150);
     QRect btnDmgRect = QRect(10,450,285,85);
     QRect btnRangeRect = QRect(305,450,285,85);
     QRect btnFirerateRect = QRect(10,545,285,85);
@@ -326,6 +340,8 @@ private:
     void buyRepostTower();
     void buyBenisTower();
     void buyBanTower();
+    void buySniperTower();
+    void buyFlakTower();
     void delEnemy(int pos);
     void delTower(Tower *t);
     void reset(int custom = 0);

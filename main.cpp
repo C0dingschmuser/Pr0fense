@@ -8,21 +8,21 @@ public:
     {};
     virtual ~Pr0fenseApp() {};
     bool notify( QObject *receiver, QEvent *e) {
-    bool result = true;
-    try {
-        if( receiver && e )
-            result = QApplication::notify( receiver, e );
+        bool result = true;
+        try {
+            if( receiver && e )
+                result = QApplication::notify( receiver, e );
+            }
+        catch ( int param ) {
+            QMessageBox::warning( NULL, "exception occured",
+                                QString("exception %1 occured").arg(param) );
         }
-    catch ( int param ) {
-        QMessageBox::warning( NULL, "exception occured",
-                            QString("exception %1 occured").arg(param) );
+        catch ( ... ) {
+            QMessageBox::warning( NULL, "unknown exception",
+                                QString("unknown exception occured ") );
+        }
+        return result;
     }
-    catch ( ... ) {
-        QMessageBox::warning( NULL, "unknown exception",
-                            QString("unknown exception occured ") );
-    }
-    return result;
-  }
 };
 
 #include "frmmain.h"

@@ -18,6 +18,7 @@ public:
     int stun;
     int repost;
     int type = 0;
+    bool hasShekelImage = false;
     double opacity = 1;
     double opacityDecAm = 0;
     Enemy *target = NULL;

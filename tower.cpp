@@ -22,11 +22,15 @@ QString Tower::toString()
             QString::number(dmglvl) + "," +
             QString::number(ratelvl) + "," +
             QString::number(speedlvl) + "," +
+            QString::number(rangelvl) + "," +
             QString::number(repost) + "," +
             QString::number(projectilePxID) + "," +
             QString::number(dmgprice) + "," +
             QString::number(rateprice) + "," +
             QString::number(rangeprice) + "," +
-            QString::number(speedprice);
+            QString::number(speedprice) + "," +
+            QString::number(angle) + "," +
+            QString::number(angleSpeed) + "," +
+            QString::number(targetAngle);
 
 }

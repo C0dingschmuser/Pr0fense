@@ -169,8 +169,10 @@ DISTFILES += \
 ANDROID_PACKAGE_SOURCE_DIR = $$PWD/android
 
 RESOURCES += \
-    resources.qrc \
-    music.qrc
+    resources.qrc
+
+android: RESOURCES += music_ogg.qrc
+else:unix|win32: RESOURCES += music.qrc
 
 unix|win32: LIBS += -L$$PWD/lib/ -lBox2D
 

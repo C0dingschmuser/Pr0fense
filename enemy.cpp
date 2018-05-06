@@ -41,6 +41,8 @@ void Enemy::initPhysics(b2World *world)
     b2FixtureDef fixtureDef;
     fixtureDef.shape = &circleShape;
     fixtureDef.density = 0;
+    fixtureDef.filter.categoryBits = ownCategoryBits;
+    fixtureDef.filter.maskBits = collidingCategoryBits;
     body->CreateFixture(&fixtureDef);
     updatePos();
     physicsInitialized = true;
@@ -93,14 +95,16 @@ void Enemy::free()
     pos = QRectF();
     cpos = 0;
     health = 0;
+    path = -1;
     isUsed = false;
     repost = 0;
     maxRepost = 0;
+    animation = 0;
 }
 
 void Enemy::updatePos()
 {
-    if(!physicsInitialized) return;
+    if(!physicsInitialized||body==nullptr) return;
     this->pos = QRectF(body->GetPosition().x-pos.width()/2,body->GetPosition().y-pos.height()/2,pos.width(),pos.height());
 }
 
@@ -115,11 +119,18 @@ QRect Enemy::rect()
 
 QRectF Enemy::rectF(int a)
 {
-    Q_UNUSED(a);
-    if(!a) {
-        return QRectF(body->GetPosition().x-pos.width()/2,body->GetPosition().y-pos.height()/2,pos.width(),pos.height());
+    if(!physicsInitialized||body==nullptr) {
+        if(!a) {
+            return pos;
+        } else {
+            return QRectF(pos.x()+pos.width()/2,pos.y()+pos.height()/2,pos.width(),pos.height());
+        }
     } else {
-        return QRectF(body->GetPosition().x,body->GetPosition().y,pos.width(),pos.height());
+        if(!a) {
+            return QRectF(body->GetPosition().x-pos.width()/2,body->GetPosition().y-pos.height()/2,pos.width(),pos.height());
+        } else {
+            return QRectF(body->GetPosition().x,body->GetPosition().y,pos.width(),pos.height());
+        }
     }
 }
 
@@ -141,5 +152,6 @@ QString Enemy::toString()
             QString::number(type) + "," +
             QString::number(opacity) + "," +
             QString::number(path) + "," +
-            QString::number(price);
+            QString::number(price) + "," +
+            QString::number(animation);
 }

@@ -5,7 +5,7 @@ Wave::Wave()
 
 }
 
-Wave::Wave(int fl, int nsw, int sw, int s, int alt, int m, int a, int l)
+Wave::Wave(int fl, int nsw, int sw, int s, int alt, int m, int a, int l, int g)
 {
     this->fliesen = fl;
     this->neuschwuchteln = nsw;
@@ -15,6 +15,7 @@ Wave::Wave(int fl, int nsw, int sw, int s, int alt, int m, int a, int l)
     this->mods = m;
     this->admins = a;
     this->legenden = l;
+    this->gebannte = g;
 }
 
 QString Wave::toString()
@@ -26,5 +27,6 @@ QString Wave::toString()
             QString::number(altschwuchteln) + "," +
             QString::number(mods) + "," +
             QString::number(admins) + "," +
-            QString::number(legenden);
+            QString::number(legenden) + "," +
+            QString::number(gebannte);
 }

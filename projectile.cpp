@@ -24,7 +24,7 @@ void Projectile::update(bool full)
                 angle -= (diff*steps) / 3;
             }
             this->angle = angle;
-        } else if(!target->soonBanned) {
+        } else if(!target->soonBanned&&steps>2) {
             this->angle = newAngle;
         }
         steps++;
@@ -93,7 +93,7 @@ void Projectile::init3(QString text, QPoint pos, int angle, double vx, double vy
 
 void Projectile::free()
 {
-    rect = QRectF();
+    rect = QRectF(-100,-100,10,10);
     target = NULL;
     this->vx = 0;
     this->vy = 0;
@@ -115,7 +115,8 @@ QString Projectile::toString()
             QString::number(vel) + "," +
             QString::number(del) + "," +
             text + "," +
-            QString::number(pxID);
+            QString::number(pxID) + "," +
+            QString::number(hasShekelImage);
 
 }
 

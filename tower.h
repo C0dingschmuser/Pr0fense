@@ -14,9 +14,10 @@ public:
     bool hasFirerate = true;
     bool hasProjectileSpeed = true;
     int shotsFiredSinceReload = 0;
-    Enemy *target = NULL;
+    Enemy *target = nullptr;
     int saveNum = -1;
     int type = 0;
+    int side = 0;
     int reload = 0;
     int reloadMax = 0;
     int projectilePxID = 0;
@@ -32,6 +33,9 @@ public:
     int ratelvl = 1;
     int rangelvl = 1;
     int speedlvl = 1;
+    double angle = 0;
+    double targetAngle = 0;
+    double angleSpeed = 0;
     int dmgprice;
     int rateprice;
     int rangeprice;

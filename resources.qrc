@@ -24,7 +24,6 @@
         <file>data/images/menu.png</file>
         <file>data/images/ui/start.png</file>
         <file>data/images/ui/editor.png</file>
-        <file>data/images/towers/baseFav.png</file>
         <file>data/images/towers/herz.png</file>
         <file>data/images/ui/title.png</file>
         <file>data/images/maptile.png</file>
@@ -62,5 +61,11 @@
         <file>data/images/ui/shop.png</file>
         <file>data/maps/map2.dat</file>
         <file>data/images/maps/map2.png</file>
+        <file>data/images/towers/sniper.png</file>
+        <file>data/images/towers/minusTower.png</file>
+        <file>data/images/towers/flak.png</file>
+        <file>data/images/ui/edit.png</file>
+        <file>data/images/rotor.png</file>
+        <file>data/images/towers/favTower.png</file>
     </qresource>
 </RCC>

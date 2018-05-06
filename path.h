@@ -8,6 +8,7 @@ public:
     Path();
     std::vector <int> path;
     int getNext(int cpos);
+    bool active = false;
 };
 
 #endif // PATH_H

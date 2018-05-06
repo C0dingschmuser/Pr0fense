@@ -18,6 +18,22 @@ public:
     {
         return qSqrt(qPow(qFabs(p2.x()-(double)p1.x()),2)+qPow(qFabs(p2.y()-(double)p1.y()),2));
     }
+    static bool getTurnSide(int current, int target)
+    {
+        int diff = target - current;
+        if(diff < 0)
+            diff += 360;
+        if(diff > 180)
+             return false; // left turn
+        else
+             return true; // right turn
+    }
+    static bool isEqual(double a, double b, double epsilon = 0.001)
+    {
+        bool ok = false;
+        if(std::fabs(a-b)<epsilon) ok = true;
+        return ok;
+    }
     static bool intersectsWithCircle(QRectF rect, QRectF circle)
     {
         bool coll=false;
