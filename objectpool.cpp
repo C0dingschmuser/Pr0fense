@@ -3,10 +3,10 @@
 ObjectPool::ObjectPool(QMutex *mutex, int projectileHeap, int enemyHeap)
 {
     this->mutex = mutex;
-    for(uint i=0;i<projectileHeap;i++) {
+    for(int i=0;i<projectileHeap;i++) {
         projectiles.push_back(new Projectile());
     }
-    for(uint i=0;i<enemyHeap;i++) {
+    for(int i=0;i<enemyHeap;i++) {
         enemys.push_back(new Enemy());
     }
 }

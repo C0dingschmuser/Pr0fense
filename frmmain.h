@@ -33,6 +33,8 @@
 #include "wave.h"
 #include "shop.h"
 #include "path.h"
+#include "msgbox.h"
+#include "account.h"
 #ifdef Q_OS_ANDROID
 #include "lockhelper.h"
 #endif
@@ -47,6 +49,35 @@ enum _entityCategory {
     FLYING_ENEMY =  0x0004,
 };
 
+//EnemyType Enums in enemy.h definiert
+
+//TowerType Enums in tower.h definiert
+
+enum _gameStates {
+    STATE_MAINMENU =   0,
+    STATE_PLAYING =    1,
+    STATE_EDITOR =     2,
+    STATE_SUSPENDED = -1,
+};
+
+enum _animationStates {
+    ANIMATION_PLAY =       1,
+    ANIMATION_EDITOR =     2,
+    ANIMATION_EDITOR_OWN = 3,
+    ANIMATION_BACK =       4,
+    ANIMATION_CONTINUE =   5,
+    ANIMATION_SUSPENDED = 0,
+};
+
+enum _accountStates {
+    ACCOUNT_BANNED = -1,
+    ACCOUNT_INACTIVE = 0,
+    ACCOUNT_ACTIVE = 1,
+    ACCOUNT_VERIFIED = 2,
+    ACCOUNT_CHEATER = 3,
+    ACCOUNT_PENDING = 4,
+};
+
 class FrmMain : public QOpenGLWidget
 {
     Q_OBJECT
@@ -59,9 +90,12 @@ private:
     Ui::FrmMain *ui;
 #ifdef Q_OS_ANDROID
     QInAppStore *store;
+    KeepAwakeHelper helper; //verhindert, dass app in standby geht
 #endif
-    const QString version = "0.61";
-    QString newestPost = "2539504";
+    Shop *shop;
+    const QString version = "1.0";
+    QString newestPost = "2558346";
+    Account account;
     bool newPost = false;
     b2World *world=nullptr;
     b2Body *wall1=nullptr,*wall2=nullptr,*wall3=nullptr,*wall4=nullptr;
@@ -90,9 +124,6 @@ private:
     QTimer *t_menuAn;
     QTimer *t_physics;
     QThread *workerThread;
-#ifdef Q_OS_ANDROID
-    KeepAwakeHelper helper; //verhindert, dass app in standby geht
-#endif
     double scaleX;
     double scaleY;
     double scaleFHDX;
@@ -109,11 +140,12 @@ private:
     std::vector <QPixmap> lvlPreviews;
     std::vector <QRect> mainLvlRects;
     std::vector <Level> levels;
-    std::vector <Wave> waves;
+    std::vector <uint> lvlPrices;
     std::vector <double> frameTimes;
     std::vector <b2Body*> delBodies;
     std::vector <Enemy*> createBodies;
     std::vector <Tile*> createTileBodies;
+    std::vector <QPixmap> minigunTowerPx;
     QPixmap mapTile = QPixmap(":/data/images/maptile.png");
     QPixmap turmtile = QPixmap(":/data/images/turmtile.png");
     QPixmap emptytile = QPixmap(":/data/images/empty.png");
@@ -129,6 +161,9 @@ private:
     QPixmap minusTowerPx = QPixmap(":/data/images/towers/minusTower.png");
     QPixmap favTowerPx = QPixmap(":/data/images/towers/favTower.png");
     QPixmap flakTowerPx = QPixmap(":/data/images/towers/flak.png");
+    QPixmap laserTowerPx = QPixmap(":/data/images/towers/lasertower.png");
+    QPixmap poisonTowerPx = QPixmap(":/data/images/towers/poison.png");
+    QPixmap poison_gas = QPixmap(":/data/images/towers/poison_poison.png");
     QPixmap blus = QPixmap(":/data/images/towers/blus.png");
     QPixmap blus_blurred = QPixmap(":/data/images/towers/blus_blurred.png");
     QPixmap buyPx = QPixmap(":/data/images/ui/kaufen.png");
@@ -136,13 +171,19 @@ private:
     QPixmap auswahlPx = QPixmap(":/data/images/ui/auswahl.png");
     QPixmap auswahlTile = QPixmap(":/data/images/auswahltile.png");
     QPixmap btnSpeed = QPixmap(":/data/images/ui/btnSpeed.png");
+    QPixmap btnSpeed_grau = QPixmap(":/data/images/ui/deaktiviert/btnSpeed.png");
     QPixmap btnDmg = QPixmap(":/data/images/ui/btnDmg.png");
+    QPixmap btnDmg_grau = QPixmap(":/data/images/ui/deaktiviert/btnDmg.png");
     QPixmap btnFirerate = QPixmap(":/data/images/ui/btnFirerate.png");
+    QPixmap btnFirerate_grau = QPixmap(":/data/images/ui/deaktiviert/btnFirerate.png");
     QPixmap btnRange = QPixmap(":/data/images/ui/btnRange.png");
+    QPixmap btnrange_grau = QPixmap(":/data/images/ui/deaktiviert/btnRange.png");
     QPixmap btnSell = QPixmap(":/data/images/ui/btnSell.png");
+    QPixmap btnTurn = QPixmap(":/data/images/ui/btnTurn.png");
+    QPixmap btnTurn_grau = QPixmap(":/data/images/ui/deaktiviert/btnTurn.png");
     QPixmap btnBack = QPixmap(":/data/images/ui/zurueck.png");
     QPixmap btnContinue = QPixmap(":/data/images/ui/weiterspielen.png");
-    QPixmap btnContinueGrey = QPixmap(":/data/images/ui/weiterspielen_grau.png");
+    QPixmap btnContinueGrey = QPixmap(":/data/images/ui/deaktiviert/weiterspielen_grau.png");
     QPixmap btnStopPx = QPixmap(":/data/images/ui/stop.png");
     QPixmap btnNormalPx = QPixmap(":/data/images/ui/normal.png");
     QPixmap btnFastPx = QPixmap(":/data/images/ui/fast.png");
@@ -156,6 +197,9 @@ private:
     QPixmap editPx = QPixmap(":/data/images/ui/editor.png");
     QPixmap exitPx = QPixmap(":/data/images/ui/beenden.png");
     QPixmap shopPx = QPixmap(":/data/images/ui/shop.png");
+    QPixmap account_failPx = QPixmap(":/data/images/ui/account-fail.png");
+    QPixmap account_successPx = QPixmap(":/data/images/ui/account_success.png");
+    QPixmap account_success_pendingPx = QPixmap(":/data/images/ui/account_waiting.png");
     QPixmap enemyPx = QPixmap(":/data/images/enemy.png");
     QPixmap pr0coinPx = QPixmap(":/data/images/towers/coin.png");
     QPixmap baseHerzPx = QPixmap(":/data/images/ui/herz.png");
@@ -187,16 +231,19 @@ private:
     //</Farben>
     //<Standard>
     double zoomScale = 0;
-    uint minusTowerCost = 50, herzTowerCost = 40, repostTowerCost = 75, benisTowerCost = 100,
-        banTowerCost = 200, sniperTowerCost = 150, flakTowerCost = 100;
+    const uint minusTowerCost = 50, herzTowerCost = 75, repostTowerCost = 125, benisTowerCost = 100,
+        banTowerCost = 300, sniperTowerCost = 250, flakTowerCost = 100, laserTowerCost = 175,
+        poisonTowerCost = 300, minigunTowerCost = 200;
+    const double upgradeHighConst = 0.75, upgradeLowConst = 0.5;
     int shaking = 0;
-    int shakeX=0, shakeY=0, shakeIntensity=3;
+    int shakeX = 0, shakeY=0, shakeIntensity = 2;
     QFont f = QFont("Arial");
     /*Active-States
     0 - Hauptmenü
     1 - Ingame
     2 - Mapeditor*/
-    int active = -1;
+    int active = STATE_SUSPENDED;
+    uint upgradeCost = 0;
     int subActive = 0;
     uint subActiveSelected = 0;
     uint subLevelSelected = 0;
@@ -221,6 +268,8 @@ private:
     //
     bool mapLoaded = false;
     bool resetPos = false;
+    bool towerMenuAnimatingDir = 0;
+    int towerMenuAnimating = -1;
     int towerMenu = -1;
     int towerMenuSelected = 0;
     int delAll = 0;
@@ -228,7 +277,8 @@ private:
     double blendRectOpacity = 0;
     int fdir = 0;
     QRectF target;
-    QRect towerMenuRect = QRect(0,150,600,800);
+    QRect towerMenuRect = QRect(0,150,600,930);
+    QRect towerMenuRectAnimation = QRect(-600,150,500,930);
     QRect minusTowerRect = QRect(50,200,150,150);
     QRect favTowerRect = QRect(225,200,150,150);
     QRect repostTowerRect = QRect(400,200,150,150);
@@ -236,16 +286,22 @@ private:
     QRect banTowerRect = QRect(225,375,150,150);
     QRect sniperTowerRect = QRect(400,375,150,150);
     QRect flakTowerRect = QRect(50,550,150,150);
+    QRect laserTowerRect = QRect(225,550,150,150);
+    QRect poisonTowerRect = QRect(400,550,150,150);
+    QRect minigunTowerRect = QRect(50,725,150,150);
     QRect btnDmgRect = QRect(10,450,285,85);
     QRect btnRangeRect = QRect(305,450,285,85);
     QRect btnFirerateRect = QRect(10,545,285,85);
     QRect btnSpeedRect = QRect(305,545,285,85);
     QRect btnSellRect = QRect(10,640,285,85);
+    QRect btnTurnRect = QRect(305,640,285,85);
     //Hauptmenü
     QRect startRect = QRect(50,500,400,89);
     QRect editRect = QRect(50,600,400,89);
     QRect shopRect = QRect(50,700,400,89);
     QRect exitRect = QRect(50,800,400,89);
+    QRect shekelRect = QRect(50, 330, 100, 50);
+    QRect accountRect = QRect(50, 900, 100, 100);
     //283 x 413
     QRect btnContinueRect = QRect(677,413,566,127);
     QRect btnContinueMenuRect = QRect(50,400,400,89);
@@ -292,7 +348,7 @@ private:
     bool loaded = false;
     bool error=false;
     const double NANO_TO_MILLI = 1000000.0;
-    const uint mainLevels = 3;
+    const uint mainLevels = 4;
     double tmainMS = 0;
     double tdrawMS = 0;
     double twavespeedMS = 0;
@@ -302,6 +358,7 @@ private:
     int basehp = 75;
     //</BASE>
     void initPhysics();
+    void addTowerTargets(Tower *t);
     void resetTimers();
     void checkPush(b2Body *delBody);
     void createBounds();
@@ -327,14 +384,16 @@ private:
     void loadLevels();
     void loadGameSave();
     void loadLitteSprueche();
-    void loadWaves();
     void saveGameSave();
     void saveMaps();
     void saveOptions();
     void loadOptions();
     void changePlaylist(int playlist);
     int createPath();
-    void changeSize(QPainter &painter, int pixelSize, bool bold=false);
+    void createAccount();
+    void saveAccount();
+    void accountCreationError();
+    void changeSize(QPainter &painter, int pixelSize, bool bold = false);
     void buyMinusTower();
     void buyFavTower();
     void buyRepostTower();
@@ -342,6 +401,9 @@ private:
     void buyBanTower();
     void buySniperTower();
     void buyFlakTower();
+    void buyLaserTower();
+    void buyPoisonTower();
+    void buyMinigunTower();
     void delEnemy(int pos);
     void delTower(Tower *t);
     void reset(int custom = 0);
@@ -350,16 +412,13 @@ private:
     void error_string(QString e1,QString e2,QString e3);
     void error_save(QFile &file);
     int sendDataToServer(QString data);
-    int getEnemySizeByType(int type=0);
-    int getHealth(bool max=true);
-    bool checkTimers(int type=0);
+    int getEnemySizeByType(int type = 0);
+    double getHealth(bool max = true);
+    bool checkTimers(int type = 0);
+    bool worldContains(b2Body *b);
     QDate getServerDate();
     void getStatus();
     void newPostInfo();
-#ifdef Q_OS_ANDROID
-    int purchaseMediumMap();
-    int purchaseLargeMap();
-#endif
     Level parseLvlString(QString lvl, int startPos=3);
     QPixmap createMapImage(int custom=0);
     QPixmap createMapImage(QString data, int width, int height);
@@ -383,6 +442,9 @@ private slots:
     void on_tphysics();
     void on_mediaStateChanged(QMediaPlayer::MediaStatus status);
     void on_appStateChanged(Qt::ApplicationState state);
+    void on_mapBuy(int subSelected);
+    void on_buyError(int id);
+    void on_purchaseShekel(QString paket);
 
 protected:
     bool event(QEvent *e) override;

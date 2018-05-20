@@ -38,7 +38,6 @@
         <file>data/images/eigene.png</file>
         <file>data/images/levels.png</file>
         <file>data/images/community.png</file>
-        <file>data/images/enemy.png</file>
         <file>data/images/maps/map0.png</file>
         <file>data/images/maps/map1.png</file>
         <file>data/maps/map1.dat</file>
@@ -50,7 +49,6 @@
         <file>data/images/towers/coin.png</file>
         <file>data/images/ui/herz.png</file>
         <file>data/images/ui/beenden.png</file>
-        <file>data/images/ui/weiterspielen_grau.png</file>
         <file>data/images/ui/sound0.png</file>
         <file>data/images/ui/sound1.png</file>
         <file>data/images/ui/fast.png</file>
@@ -67,5 +65,49 @@
         <file>data/images/ui/edit.png</file>
         <file>data/images/rotor.png</file>
         <file>data/images/towers/favTower.png</file>
+        <file>data/images/towers/lasertower.png</file>
+        <file>data/images/towers/poison.png</file>
+        <file>data/images/towers/poison_poison.png</file>
+        <file>data/images/ui/btnTurn.png</file>
+        <file>data/images/ui/deaktiviert/btnDmg.png</file>
+        <file>data/images/ui/deaktiviert/btnFirerate.png</file>
+        <file>data/images/ui/deaktiviert/btnRange.png</file>
+        <file>data/images/ui/deaktiviert/btnSpeed.png</file>
+        <file>data/images/ui/deaktiviert/btnTurn.png</file>
+        <file>data/images/ui/deaktiviert/weiterspielen_grau.png</file>
+        <file>data/images/ui/shop/maps.png</file>
+        <file>data/images/ui/shop/shekel.png</file>
+        <file>data/images/ui/shop/tuerme.png</file>
+        <file>data/images/shekel.png</file>
+        <file>data/images/auswahl_buy.png</file>
+        <file>data/images/maps/map3.png</file>
+        <file>data/maps/map3.dat</file>
+        <file>data/images/towers/minigun/minigun1.png</file>
+        <file>data/images/towers/minigun/minigun2.png</file>
+        <file>data/images/towers/minigun/minigun3.png</file>
+        <file>data/images/towers/minigun/minigun4.png</file>
+        <file>data/images/ui/shop/tuerme/tower1.png</file>
+        <file>data/images/ui/shop/tuerme/tower2.png</file>
+        <file>data/images/ui/shop/tuerme/tower3.png</file>
+        <file>data/images/ui/shop/tuerme/tower4.png</file>
+        <file>data/images/ui/shop/tuerme/tower5.png</file>
+        <file>data/images/ui/shop/tuerme/tower6.png</file>
+        <file>data/images/ui/shop/tuerme/tower7.png</file>
+        <file>data/images/ui/shop/tuerme/tower8.png</file>
+        <file>data/images/ui/shop/tuerme/tower9.png</file>
+        <file>data/images/ui/shop/tuerme/tower10.png</file>
+        <file>data/images/ui/shop/shekelpacks/shekel0.png</file>
+        <file>data/images/ui/shop/shekelpacks/shekel1.png</file>
+        <file>data/images/ui/shop/shekelpacks/shekel2.png</file>
+        <file>data/images/ui/shop/shekelpacks/shekel3.png</file>
+        <file>data/images/ui/shop/shekelpacks/shekel4.png</file>
+        <file>data/images/ui/shop/shekelpacks/shekel5.png</file>
+        <file>data/images/ui/shop/shekelpacks/shekel6.png</file>
+        <file>data/images/ui/shop/shekelpacks/shekel7.png</file>
+        <file>data/images/ui/account_success.png</file>
+        <file>data/images/ui/account-fail.png</file>
+        <file>data/images/ui/shop/tuerme/tower0.png</file>
+        <file>data/images/schloss_quadrat.png</file>
+        <file>data/images/ui/account_waiting.png</file>
     </qresource>
 </RCC>

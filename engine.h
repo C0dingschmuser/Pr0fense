@@ -3,6 +3,10 @@
 #include <QtMath>
 #include <QRectF>
 #include <QPointF>
+#include <QPolygonF>
+#include <QElapsedTimer>
+#include <QFont>
+#include <QPainter>
 
 class Engine
 {
@@ -16,7 +20,11 @@ public:
     }
     static double getDistance(QPointF p1,QPointF p2)
     {
-        return qSqrt(qPow(qFabs(p2.x()-(double)p1.x()),2)+qPow(qFabs(p2.y()-(double)p1.y()),2));
+        //292-585-877
+        double v1 = qFabs(p2.x()-(double)p1.x());
+        double v2 = qFabs(p2.y()-(double)p1.y());
+        double result = qSqrt((v1*v1)+(v2*v2));
+        return result;
     }
     static bool getTurnSide(int current, int target)
     {
@@ -75,10 +83,10 @@ public:
             int x2 = circle2.center().x();
             int y1 = circle1.center().y();
             int y2 = circle2.center().y();
-            int e1 = pow((r1-r2),2);
-            int e2 = pow((x1-x2),2)+pow((y1-y2),2);
-            int e3 = pow((r1+r2),2);
-            if(e1<=e2&&e2<=e3) {
+            int e1 = (r1 - r2) * (r1 - r2);
+            int e2 = ((x1 - x2) * (x1 - x2)) + ((y1 - y2) * (y1 - y2));
+            int e3 = (r1 + r2) * (r1 + r2);
+            if(e1 <= e2 && e2 <= e3) {
                 coll = true;
             }
         }
@@ -93,6 +101,40 @@ public:
             randn = rand() %(max-min) + min;
         }
         return randn;
+    }
+    static double getAngleDifference(double a1, double a2)
+    {
+        double diff = 0;
+        diff = a1 - a2;
+        if(diff > 180) diff -= 360;
+        if(diff < -180) diff += 360;
+        return std::fabs(diff);
+    }
+    static QPolygonF getRauteFromRect(QRectF rect)
+    {
+        QPolygonF poly;
+        poly.append(QPointF(rect.x() + rect.width() / 2, rect.y()));
+        poly.append(QPointF(rect.right(), rect.y() + rect.height()/2));
+        poly.append(QPointF(rect.x() + rect.width() / 2, rect.bottom()));
+        poly.append(QPointF(rect.x(), rect.y() + rect.height() / 2));
+        return poly;
+    }
+    static bool polygonIntersectsRect(QRectF rect, QPolygonF poly)
+    {
+        QPolygonF poly_rect;
+        poly_rect.append(QPointF(rect.x(),rect.y()));
+        poly_rect.append(QPointF(rect.right(),rect.y()));
+        poly_rect.append(QPointF(rect.right(),rect.bottom()));
+        poly_rect.append(QPointF(rect.x(),rect.bottom()));
+        bool coll = false;
+        coll = poly_rect.intersects(poly);
+        return coll;
+    }
+    static void changeSize(QFont &font, QPainter &painter, int pixelSize, bool bold = false)
+    {
+        font.setPixelSize(pixelSize);
+        font.setBold(bold);
+        painter.setFont(font);
     }
 private:
     Engine() {}

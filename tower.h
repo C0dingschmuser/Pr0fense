@@ -3,6 +3,20 @@
 #include <QRect>
 #include <QString>
 #include "enemy.h"
+#include "targetdefinition.h"
+
+enum _towerTypes {
+    TOWER_MINUS =    1,
+    TOWER_HERZ =     2,
+    TOWER_REPOST =   3,
+    TOWER_BENIS =    4,
+    TOWER_BAN =      5,
+    TOWER_SNIPER =   6,
+    TOWER_FLAK =     7,
+    TOWER_LASER =    8,
+    TOWER_POISON =   9,
+    TOWER_MINIGUN = 10,
+};
 
 class Tower
 {
@@ -13,6 +27,7 @@ public:
     bool hasRange = true;
     bool hasFirerate = true;
     bool hasProjectileSpeed = true;
+    bool hasTurnSpeed = true;
     int shotsFiredSinceReload = 0;
     Enemy *target = nullptr;
     int saveNum = -1;
@@ -22,9 +37,11 @@ public:
     int reloadMax = 0;
     int projectilePxID = 0;
     int currentReload = 0;
+    bool isShooting = false;
     int animation = 0;
+    int animationMax = 0;
     double pspeed = 0;
-    int dmg = 0;
+    double dmg = 0;
     int stun = 0;
     int repost = 0;
     int range = 0;
@@ -33,17 +50,21 @@ public:
     int ratelvl = 1;
     int rangelvl = 1;
     int speedlvl = 1;
+    int turnlvl = 1;
     double angle = 0;
     double targetAngle = 0;
     double angleSpeed = 0;
-    int dmgprice;
-    int rateprice;
-    int rangeprice;
-    int speedprice;
     int tnum = -1;
+    std::vector <TargetDefinition> targetTypes;
+    //std::vector <int>
+    void addTargetDef(int target, int efficiency);
+    bool isTargetValid(int target);
+    double getTargetEfficiency(int target);
+    double getDmg(int target);
     QString name;
     QRect rect();
     QString toString();
+    static QString getInfo(int type, int pos, bool rem = false);
 };
 
 #endif // TOWER_H

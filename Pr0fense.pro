@@ -81,7 +81,10 @@ SOURCES += \
     Box2D/Collision/Shapes/b2EdgeShape.cpp \
     Box2D/Collision/Shapes/b2PolygonShape.cpp \
     shop.cpp \
-    path.cpp
+    path.cpp \
+    targetdefinition.cpp \
+    msgbox.cpp \
+    account.cpp
 
 
 android: SOURCES += lockhelper.cpp
@@ -144,7 +147,10 @@ HEADERS += \
     Box2D/Collision/Shapes/b2PolygonShape.h \
     Box2D/Collision/Shapes/b2Shape.h \
     shop.h \
-    path.h
+    path.h \
+    targetdefinition.h \
+    msgbox.h \
+    account.h
 
 
 android: HEADERS += lockhelper.h

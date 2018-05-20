@@ -24,7 +24,7 @@ void Projectile::update(bool full)
                 angle -= (diff*steps) / 3;
             }
             this->angle = angle;
-        } else if(!target->soonBanned&&steps>2) {
+        } else if(!target->soonBanned&&steps) {
             this->angle = newAngle;
         }
         steps++;
@@ -39,7 +39,19 @@ void Projectile::update(bool full)
     }
 }
 
-void Projectile::init(QRectF rect, int angle, int dmg, Enemy *target, double vx, double vy, double vel, int stun, int repost, int pxID)
+double Projectile::getTargetEfficiency(int target)
+{
+    double efficiency = 0;
+    for(uint i = 0; i < targetDefinitions.size(); i++) {
+        if(targetDefinitions[i].enemyType == target) {
+            efficiency = targetDefinitions[i].enemyEfficiency;
+            break;
+        }
+    }
+    return efficiency;
+}
+
+void Projectile::init(QRectF rect, int angle, double dmg, Enemy *target, double vx, double vy, double vel, int stun, int repost, int pxID)
 {
     isUsed = true;
     del = false;
@@ -95,6 +107,8 @@ void Projectile::free()
 {
     rect = QRectF(-100,-100,10,10);
     target = NULL;
+    poisonDmg = 1;
+    this->color = QColor(1,1,1,1);
     this->vx = 0;
     this->vy = 0;
     this->isUsed = false;
@@ -116,7 +130,10 @@ QString Projectile::toString()
             QString::number(del) + "," +
             text + "," +
             QString::number(pxID) + "," +
-            QString::number(hasShekelImage);
+            QString::number(hasShekelImage) + "," +
+            QString::number(color.red()) + "," + QString::number(color.green()) +
+                "," + QString::number(color.blue()) + "," + QString::number(color.alpha()) + "," +
+            QString::number(poisonDmg);
 
 }
 

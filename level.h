@@ -13,7 +13,9 @@ public:
     std::vector <int> map;
     QPixmap lvlImage;
     QRect levelRect;
-    bool used=false;
+    bool used = false;
+    bool unlocked = false;
+    int price = 0;
     int width = 0;
     int height = 0;
     QString lvlName;

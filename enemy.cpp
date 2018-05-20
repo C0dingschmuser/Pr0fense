@@ -5,12 +5,11 @@ Enemy::Enemy()
     isUsed = false;
     body = nullptr;
     physicsInitialized = false;
+    newspeed = 0;
 }
 
 void Enemy::init(QRectF pos, double speed, int type, int cpos, int health, int path, int price)
 {
-    stunned = 0;
-    maxStun = 0;
     soonBanned = false;
     physicsInitialized = false;
     this->price = price;
@@ -21,9 +20,9 @@ void Enemy::init(QRectF pos, double speed, int type, int cpos, int health, int p
     this->preHealth = health;
     this->speed = speed;
     this->ospeed = speed;
-    this->repost = 0;
     this->type = type;
     this->path = path;
+    newspeed = 0;
     isUsed = true;
     dir = 1; //rechts
 }
@@ -36,10 +35,21 @@ void Enemy::initPhysics(b2World *world)
     BodyDef.angle = 0;
     body = world->CreateBody(&BodyDef);
     b2CircleShape circleShape;
-    circleShape.m_p.Set(0,0);
-    circleShape.m_radius = pos.width()/2;
+    b2PolygonShape polyShape;
     b2FixtureDef fixtureDef;
-    fixtureDef.shape = &circleShape;
+    if(type != 7) { //wenn nicht legende
+        circleShape.m_p.Set(0,0);
+        circleShape.m_radius = pos.width() / 2;
+        fixtureDef.shape = &circleShape;
+    } else if( type == 7){
+        QPolygonF polygon = Engine::getRauteFromRect(pos);
+        b2Vec2 array[4];
+        for(uint i = 0; i < 4; i++) {
+            array[i].Set(-(pos.x() + pos.width()/2) + polygon.at(i).x(), -(pos.y() + pos.height()/2) + polygon.at(i).y());
+        }
+        polyShape.Set(array, 4);
+        fixtureDef.shape = &polyShape;
+    }
     fixtureDef.density = 0;
     fixtureDef.filter.categoryBits = ownCategoryBits;
     fixtureDef.filter.maskBits = collidingCategoryBits;
@@ -82,23 +92,30 @@ void Enemy::setRepost(int repostAmount)
     this->maxRepost = repostAmount;
 }
 
-void Enemy::reduceHealth(int amount)
+void Enemy::reduceHealth(double amount)
 {
-    if(repost&&!soonBanned) amount *= 1.5;
+    if(repost && !soonBanned && !poison) amount *= 1.5;
     health -= amount;
     if(health<0) health = 0;
 }
 
 void Enemy::free()
 {
+    blocked = false;
     body = nullptr;
     pos = QRectF();
     cpos = 0;
     health = 0;
+    newspeed = 0;
     path = -1;
     isUsed = false;
+    stunned = 0;
+    maxStun = 0;
     repost = 0;
     maxRepost = 0;
+    maxPoison = 0;
+    poison = 0;
+    poisonDmg = 1;
     animation = 0;
 }
 
@@ -134,6 +151,13 @@ QRectF Enemy::rectF(int a)
     }
 }
 
+QRectF Enemy::centerRect()
+{
+    pos = rectF();
+    QRectF center = QRectF(pos.center().x() - 1, pos.center().y() - 1, 2, 2);
+    return center;
+}
+
 QString Enemy::toString()
 {
     pos = rectF(1);
@@ -153,5 +177,10 @@ QString Enemy::toString()
             QString::number(opacity) + "," +
             QString::number(path) + "," +
             QString::number(price) + "," +
-            QString::number(animation);
+            QString::number(animation) + "," +
+            QString::number(poison) + "," +
+            QString::number(maxPoison) + "," +
+            QString::number(poisonDmg) + "," +
+            QString::number(newdir) + "," +
+            QString::number(blocked);
 }

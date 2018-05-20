@@ -14,12 +14,12 @@ public:
                 result = QApplication::notify( receiver, e );
             }
         catch ( int param ) {
-            QMessageBox::warning( NULL, "exception occured",
-                                QString("exception %1 occured").arg(param) );
+            QMessageBox::warning( NULL, "Fehler",
+                                QString("Fehler %1 ").arg(param) );
         }
         catch ( ... ) {
-            QMessageBox::warning( NULL, "unknown exception",
-                                QString("unknown exception occured ") );
+            QMessageBox::warning( NULL, "Fehler",
+                                QString("Unbekannter Fehler aufgetreten ") );
         }
         return result;
     }
@@ -31,10 +31,19 @@ int main(int argc, char *argv[])
 {
     Pr0fenseApp app(argc, argv);
     FrmMain w;
+#ifdef QT_NO_DEBUG
+    w.setWindowFlags(Qt::FramelessWindowHint);
+#endif
+
+#ifdef Q_OS_ANDROID
     w.showFullScreen();
-    #ifdef QT_DEBUG
+#else
+    w.showMaximized();
+#endif
+
+#ifdef QT_DEBUG
         w.showNormal();
-    #endif
+#endif
 
     return app.exec();
 }
