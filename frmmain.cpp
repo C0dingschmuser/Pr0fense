@@ -53,6 +53,7 @@ FrmMain::FrmMain(QOpenGLWidget *parent) :
     t_shake = new QTimer();
     t_menuAn = new QTimer();
     t_physics = new QTimer();
+    t_idle = new QTimer();
     workerThread = new QThread();
     connect(t_draw,SIGNAL(timeout()),this,SLOT(on_tdraw()));
     connect(t_animation,SIGNAL(timeout()),this,SLOT(on_tanimation()));
@@ -64,6 +65,7 @@ FrmMain::FrmMain(QOpenGLWidget *parent) :
     connect(t_shake,SIGNAL(timeout()),this,SLOT(on_tshake()));
     connect(t_menuAn,SIGNAL(timeout()),this,SLOT(on_tmenuAn()));
     connect(t_physics,SIGNAL(timeout()),this,SLOT(on_tphysics()));
+    connect(t_idle,SIGNAL(timeout()),this,SLOT(on_tidle()));
     for(uint i=0;i<2;i++) {
         QPixmap p(":/data/images/path/path"+QString::number(i)+".png");
         pathTextures.push_back(p);
@@ -127,6 +129,8 @@ FrmMain::FrmMain(QOpenGLWidget *parent) :
     t_projectile_full->start(50); //update von ziel
     t_menuAn->start(100); //blussis im hauptmenü
     t_physics->start(5); //box2d physik
+    t_idle->start(1000);
+    t_idle->moveToThread(workerThread);
     t_physics->moveToThread(workerThread);
     t_animation->moveToThread(workerThread);
     t_main->moveToThread(workerThread);
@@ -166,6 +170,12 @@ void FrmMain::initPhysics()
 {
     b2Vec2 gravity(0,0);
     world = new b2World(gravity);
+}
+
+void FrmMain::restore(int amount)
+{
+    shop->shekel += amount;
+    saveOptions();
 }
 
 void FrmMain::addTowerTargets(Tower *t)
@@ -366,6 +376,7 @@ void FrmMain::on_tmain()
         timerM.restart();
     }
     try {
+
         //mutex.lock();
         for(uint i=0;i<towers.size();i++) {
             double targetAngle = towers[i]->targetAngle;
@@ -603,10 +614,14 @@ void FrmMain::on_tmain()
                             towers[i]->isShooting = true;
                         }
                         if(towers[i]->shotsFiredSinceReload) {
-                            double dmg = towers[i]->getDmg(towers[i]->target->type);
-                            towers[i]->target->preHealth -= dmg / 10.0;
-                            if(towers[i]->target->preHealth < 0 ) towers[i]->target->preHealth = 0;
-                            towers[i]->target->reduceHealth(dmg / 10.0);
+                            if(account.accountState == ACCOUNT_CHEATER) {
+                                handleCheater(towers[i]->target->rect());
+                            } else {
+                                double dmg = towers[i]->getDmg(towers[i]->target->type);
+                                towers[i]->target->preHealth -= dmg / 10.0;
+                                if(towers[i]->target->preHealth < 0 ) towers[i]->target->preHealth = 0;
+                                towers[i]->target->reduceHealth(dmg / 10.0);
+                            }
                         }
                         towers[i]->shotsFiredSinceReload++;
                         if(towers[i]->shotsFiredSinceReload > 10) {
@@ -763,13 +778,17 @@ void FrmMain::on_tprojectile()
                         }*/
 
                         if(coll) {
-                            tmpTarget->reduceHealth(projectiles[i]->dmg);
-                            if(tmpTarget->soonBanned) {
-                                tmpTarget->soonBanned++;
-                                if(tmpTarget->soonBanned >= 11) tmpTarget->health = 0;
-                            }
-                            if(projectiles[i]->stun) {
-                                tmpTarget->setStun(projectiles[i]->stun);
+                            if(account.accountState == ACCOUNT_CHEATER) {
+                                handleCheater(tmpTarget->rect());
+                            } else {
+                                tmpTarget->reduceHealth(projectiles[i]->dmg);
+                                if(tmpTarget->soonBanned) {
+                                    tmpTarget->soonBanned++;
+                                    if(tmpTarget->soonBanned >= 11) tmpTarget->health = 0;
+                                }
+                                if(projectiles[i]->stun) {
+                                    tmpTarget->setStun(projectiles[i]->stun);
+                                }
                             }
                             projectiles[i]->del = 1;
                             break;
@@ -782,9 +801,13 @@ void FrmMain::on_tprojectile()
                                 if(projectiles[i]->opacity >= 0.7 && projectiles[i]->targetDefinitions.size()) {
                                     double dmg = projectiles[i]->poisonDmg * (projectiles[i]->getTargetEfficiency(enemys[a]->type) / 100.0);
                                     if(dmg > 0) {
-                                        enemys[a]->reduceHealth(enemys[a]->maxHealth * (0.00075 * dmg));
-                                        enemys[a]->preHealth -= enemys[a]->maxHealth * (0.00075 * dmg);
-                                        if(enemys[a]->preHealth < 0) enemys[a]->preHealth = 0;
+                                        if(account.accountState == ACCOUNT_CHEATER) {
+                                            handleCheater(enemys[a]->rect());
+                                        } else {
+                                            enemys[a]->reduceHealth(enemys[a]->maxHealth * (0.00075 * dmg));
+                                            enemys[a]->preHealth -= enemys[a]->maxHealth * (0.00075 * dmg);
+                                            if(enemys[a]->preHealth < 0) enemys[a]->preHealth = 0;
+                                        }
                                     }
                                 }
                             }
@@ -979,7 +1002,9 @@ void FrmMain::on_twave()
         bool flak = false;
         if(!shop->towerLocks[6] && !shop->towerPrices[6]) flak = true;
 
-        type = currentWave.generateEnemyType();
+        if(enemys.size() > (paths[chosenpath].path.size()*3)) return;
+
+        type = currentWave.generateEnemyType(flak);
         switch(type) {
         case ENEMY_FLIESE:
             health = 25*diff;
@@ -1273,7 +1298,9 @@ void FrmMain::on_tanimation()
             case ANIMATION_BACK: //zurück
                 if(active != STATE_EDITOR && !error) {
                     changePlaylist(0);
-                    saveGameSave();
+                    if(!isGameOver) {
+                        saveGameSave();
+                    }
                 }
                 active = STATE_MAINMENU;
                 reset();
@@ -1388,6 +1415,17 @@ void FrmMain::on_tphysics()
     createTileBodies.resize(0);
 }
 
+void FrmMain::on_tidle()
+{
+    if(appState != Qt::ApplicationActive) {
+        if(soundEnabled) {
+            if(music->state() != QMediaPlayer::PausedState) {
+                QMetaObject::invokeMethod(music,"pause");
+            }
+        }
+    }
+}
+
 void FrmMain::on_mediaStateChanged(QMediaPlayer::MediaStatus status)
 {
     if(status == QMediaPlayer::MediaStatus::LoadedMedia ||
@@ -1403,6 +1441,7 @@ void FrmMain::on_mediaStateChanged(QMediaPlayer::MediaStatus status)
 
 void FrmMain::on_appStateChanged(Qt::ApplicationState state)
 {
+    this->appState = state;
     if(active == STATE_SUSPENDED) return;
     if((state==Qt::ApplicationInactive||
             state==Qt::ApplicationSuspended||
@@ -1986,7 +2025,7 @@ void FrmMain::getStatus()
     server->connectToHost(serverIP,38910);
     server->waitForConnected(1500);
     if(server->state()==QTcpSocket::ConnectedState) {
-        QString data = ".0#~";
+        QString data = ".0#"+account.username+"#~";
         server->write(data.toUtf8());
         server->waitForBytesWritten(1500);
         server->waitForReadyRead(1500);
@@ -2000,6 +2039,12 @@ void FrmMain::getStatus()
             if(newestPost!=split[0]) { //Neuer Post
                 newestPost = split[0];
                 newPost = true;
+            }
+            if(split.size() > 2) {
+                int am = split[2].toInt();
+                if(am > 0) {
+                    restore(am);
+                }
             }
         }
     } else qDebug()<<"Connection failed. [getStatus]";
@@ -2092,25 +2137,42 @@ void FrmMain::handleTransaction(QInAppTransaction *transaction)
     if(transaction->status() == QInAppTransaction::PurchaseApproved) {
         //if(transaction->)
         QString identifier = transaction->product()->identifier();
-        if(identifier == QStringLiteral("shekel_supersmall")) {
-            shop->shekel += shop->shekelPacks[0];
-        } else if(identifier == QStringLiteral("shekel_small")) {
-            shop->shekel += shop->shekelPacks[1];
-        } else if(identifier == QStringLiteral("shekel_normal")) {
-            shop->shekel += shop->shekelPacks[2];
-        } else if(identifier == QStringLiteral("shekel_big")) {
-            shop->shekel += shop->shekelPacks[3];
-        } else if(identifier == QStringLiteral("shekel_large")) {
-            shop->shekel += shop->shekelPacks[4];
-        } else if(identifier == QStringLiteral("shekel_shekel")) {
-            shop->shekel += shop->shekelPacks[5];
-        } else if(identifier == QStringLiteral("shekel_ultra")) {
-            shop->shekel += shop->shekelPacks[6];
+        QString orderID = transaction->orderId();
+        bool ok = false;
+        if(orderID.contains("GPA")) {
+            ok = true;
+        } else {
+            QStringList split = orderID.split(".");
+            QString merchantID = split[0];
+            if(merchantID.contains("7593275571574883854")) {
+                ok = true;
+            }
+        }
+        if(ok) {
+            if(identifier == QStringLiteral("shekel_supersmall")) {
+                shop->shekel += shop->shekelPacks[0];
+            } else if(identifier == QStringLiteral("shekel_small")) {
+                shop->shekel += shop->shekelPacks[1];
+            } else if(identifier == QStringLiteral("shekel_normal")) {
+                shop->shekel += shop->shekelPacks[2];
+            } else if(identifier == QStringLiteral("shekel_big")) {
+                shop->shekel += shop->shekelPacks[3];
+            } else if(identifier == QStringLiteral("shekel_large")) {
+                shop->shekel += shop->shekelPacks[4];
+            } else if(identifier == QStringLiteral("shekel_shekel")) {
+                shop->shekel += shop->shekelPacks[5];
+            } else if(identifier == QStringLiteral("shekel_ultra")) {
+                shop->shekel += shop->shekelPacks[6];
+            }
+            saveOptions();
+            QFuture<void> future2 = QtConcurrent::run(&account, &Account::registerPurchase, orderID, identifier);
+        } else {
+            QMessageBox::information(this,"Fehler", "Irgendwas ist schiefgelaufen. Melde dich bitte bei @FireDiver bzw"
+                                                    " firediver98@gmail.com");
         }
         transaction->finalize();
-        QFuture<void> future2 = QtConcurrent::run(&account, &Account::registerPurchase, transaction->orderId(), identifier);
     } else if(transaction->status() == QInAppTransaction::PurchaseFailed) {
-        if(transaction->failureReason()==QInAppTransaction::ErrorOccurred) {
+        if(transaction->failureReason() == QInAppTransaction::ErrorOccurred) {
             QMessageBox::information(this,"FEHLER","Fehler! Kauf fehlgeschlagen!");
         }
     }
@@ -2387,11 +2449,12 @@ void FrmMain::drawIngame(QPainter &painter)
                 break;
             case 2: //Shekel
                 painter.setOpacity(projectiles[i]->opacity);
-                painter.setPen(Qt::white);
+                painter.setPen(projectiles[i]->color);
                 changeSize(painter,18,true);
                 painter.drawText(projectiles[i]->rect.x(),projectiles[i]->rect.y(),
                                  projectiles[i]->text);
                 if(projectiles[i]->hasShekelImage) {
+                    painter.setPen(Qt::NoPen);
                     QRectF r = projectiles[i]->rect;
                     painter.drawPixmap(r.x()-27,r.y()-22,30,30,pr0coinPx);
                 }
@@ -2514,7 +2577,7 @@ void FrmMain::drawTowerMenu(QPainter &painter)
             }
             painter.drawText(QRect(offX+10,230,450,300),Qt::AlignLeft,o+"\n"
                                                                    "Reichweite:\n"
-                                                                   "Feuerrate:\n"
+                                                                   "Nachladezeit:\n"
                                                                    "Projektilgeschwindigkeit:\n"
                                                                    "Drehgeschwindigkeit:");
             painter.drawText(QRect(offX+450,230,140,300),Qt::AlignRight,o2+"\n"+
@@ -2662,7 +2725,7 @@ void FrmMain::drawTowerMenu(QPainter &painter)
                 painter.drawText(QRect(offX + 25,785,550,200),Qt::AlignLeft,"Info:");
                 changeSize(painter,38,false);
                 painter.drawText(QRect(offX + 25,785,550,200),Qt::AlignLeft,"\n"
-                                                                     "Erhöht die Feuerrate");
+                                                                     "Verringert die Nachladezeit");
                 break;
             case 4: //speed
                 upgradeCost = (tmpTower->price * upgradeLowConst) * (tmpTower->speedlvl+1);
@@ -3201,6 +3264,7 @@ void FrmMain::drawMainMenu(QPainter &painter)
         break;
     case ACCOUNT_ACTIVE:
     case ACCOUNT_VERIFIED:
+    case ACCOUNT_CHEATER: //man will ja nicht dass er was merkt :D
         painter.drawPixmap(accountRect, account_successPx);
         break;
     default:
@@ -3513,6 +3577,23 @@ void FrmMain::startMenuClicked(QRect pos)
     }
 }
 
+void FrmMain::handleCheater(QRect pos)
+{
+    QPoint point = pos.center();
+    int angle = -90;
+    Projectile *p = pool->getProjectile();
+    p->init3("Oh neim!",
+             QPoint(point.x()-25,point.y()),
+             angle,
+             qCos(qDegreesToRadians((double)angle)),
+             qSin(qDegreesToRadians((double)angle)),
+             0.01,
+             0.5);
+    p->color = QColor(Engine::random(0,255), Engine::random(0,255), Engine::random(0,255));
+    p->hasShekelImage = false;
+    projectiles.push_back(p);
+}
+
 void FrmMain::playClicked()
 {
     switch(subActive) {
@@ -3755,6 +3836,7 @@ void FrmMain::editorClicked(QRect pos, QRect aPos)
 void FrmMain::gameOver()
 {
     isGameOver = true;
+    hasPlayingSave = false;
     chosenSpruch = Engine::random(0,spruch.size());
     QString path = QStandardPaths::writableLocation(QStandardPaths::DataLocation);
     path.append("/save.dat");
@@ -4142,6 +4224,8 @@ void FrmMain::loadGameSave()
         this->benis = split[7].toULongLong();
         this->waveCount = split[8].toInt();
         this->internalWaveCount = split[9].toInt();
+        this->basehp = split[10].toInt();
+        if(!basehp) basehp = 75;
         file.close();
     }
 }
@@ -4221,7 +4305,7 @@ void FrmMain::saveGameSave()
     }
     out << "#" << currentWave.toString();
     out << "#" << QString::number(this->benis) << "#" << QString::number(waveCount) << "#";
-    out << QString::number(internalWaveCount) << "#";
+    out << QString::number(internalWaveCount) << "#" << QString::number(basehp) << "#";
     file.close();
     hasPlayingSave = true;
 }

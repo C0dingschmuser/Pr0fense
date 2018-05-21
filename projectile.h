@@ -14,7 +14,7 @@ public:
     Projectile();
     std::vector <TargetDefinition> targetDefinitions;
     bool isUsed=false;
-    void update(bool full=false);
+    void update(bool full = false);
     QRectF rect;
     int angle;
     double dmg;

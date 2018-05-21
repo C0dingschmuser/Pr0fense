@@ -86,8 +86,8 @@ int Wave::calcShekel()
     int shekel = 0;
     if(waveCount) {
         if(waveCount % 10 == 0) {
-            shekel = 20;
-            if(waveCount > 20) shekel = 30;
+            shekel = 30;
+            if(waveCount > 20) shekel = 40;
             if(waveCount > 30) shekel = 50;
         }
     }

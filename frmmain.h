@@ -93,8 +93,8 @@ private:
     KeepAwakeHelper helper; //verhindert, dass app in standby geht
 #endif
     Shop *shop;
-    const QString version = "1.0";
-    QString newestPost = "2558346";
+    const QString version = "1.01";
+    QString newestPost = "2561200";
     Account account;
     bool newPost = false;
     b2World *world=nullptr;
@@ -123,6 +123,7 @@ private:
     QTimer *t_shake;
     QTimer *t_menuAn;
     QTimer *t_physics;
+    QTimer *t_idle;
     QThread *workerThread;
     double scaleX;
     double scaleY;
@@ -347,6 +348,7 @@ private:
     bool suspended = false;
     bool loaded = false;
     bool error=false;
+    int appState = Qt::ApplicationActive;
     const double NANO_TO_MILLI = 1000000.0;
     const uint mainLevels = 4;
     double tmainMS = 0;
@@ -358,6 +360,7 @@ private:
     int basehp = 75;
     //</BASE>
     void initPhysics();
+    void restore(int amount);
     void addTowerTargets(Tower *t);
     void resetTimers();
     void checkPush(b2Body *delBody);
@@ -374,6 +377,7 @@ private:
     void towerMenuClicked(QRect pos);
     void editorMenuClicked(QRect pos);
     void startMenuClicked(QRect pos);
+    void handleCheater(QRect pos);
     void playClicked();
     void delClicked();
     void backMenuClicked(QRect pos);
@@ -440,6 +444,7 @@ private slots:
     void on_tcoll();
     void on_tmenuAn();
     void on_tphysics();
+    void on_tidle();
     void on_mediaStateChanged(QMediaPlayer::MediaStatus status);
     void on_appStateChanged(Qt::ApplicationState state);
     void on_mapBuy(int subSelected);

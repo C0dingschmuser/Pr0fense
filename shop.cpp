@@ -9,7 +9,7 @@ Shop::Shop(QObject *parent) : QObject(parent)
         shekelPacksPx.push_back(QPixmap(":/data/images/ui/shop/shekelpacks/shekel"+QString::number(i)+".png"));
     }
 
-    shekelPrices.push_back(0.5);
+    shekelPrices.push_back(0.59);
     shekelPrices.push_back(0.99);
     shekelPrices.push_back(1.99);
     shekelPrices.push_back(3.99);

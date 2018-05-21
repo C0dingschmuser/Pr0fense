@@ -92,6 +92,7 @@ void Projectile::init3(QString text, QPoint pos, int angle, double vx, double vy
     isUsed = true;
     del = false;
     steps = 0;
+    this->color = QColor(255,255,255);
     this->text = text;
     this->rect = QRectF(pos.x(),pos.y(),1,1);
     this->type = 2;
