@@ -10,6 +10,24 @@
 #include "level.h"
 #include "tower.h"
 
+class Item
+{
+public:
+    Item() {}
+    Item(QString name, QString description, int price, int num)
+    {
+        this->name = name;
+        this->description = description;
+        this->price = price;
+        image = QPixmap(":/data/images/ui/shop/items/item"+QString::number(num)+".png");
+    }
+    QString name;
+    QString description;
+    QPixmap image;
+    int price;
+    bool locked = true;
+};
+
 class Shop : public QObject
 {
     Q_OBJECT
@@ -17,6 +35,7 @@ private:
     QPixmap mapsPx = QPixmap(":/data/images/ui/shop/maps.png");
     QPixmap shekelPx = QPixmap(":/data/images/ui/shop/shekel.png");
     QPixmap towerPx = QPixmap(":/data/images/ui/shop/tuerme.png");
+    QPixmap itemPx = QPixmap(":/data/images/ui/shop/Items.png");
     QPixmap auswahlpx = QPixmap(":/data/images/auswahl_buy.png");
     std::vector <QPixmap> towers;
     std::vector <QPixmap> shekelPacksPx;
@@ -40,6 +59,7 @@ public:
     std::vector <double> shekelPrices;
     std::vector <uint> shekelPacks;
     std::vector <bool> towerLocks;
+    std::vector <Item> items;
     QFont f;
     int subMenu = 0;
     uint mainlvls;
@@ -52,6 +72,7 @@ signals:
     void buyMap(int pos);
     void buyTower(int pos);
     void buyShekel(QString paket);
+    void buyItem(int pos);
     void error_buy(int id);
 
 public slots:

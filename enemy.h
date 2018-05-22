@@ -46,6 +46,9 @@ public:
     int path = -1;
     int animation = 0;
     int price;
+    double healthWidth;
+    double healthWidthTarget;
+    int flash = 0;
     double speed;
     double newspeed;
     double ospeed; //originalgeschwindigkeit
@@ -61,6 +64,8 @@ public:
     void reduceHealth(double amount);
     void free();
     void updatePos();
+    void calcWidth();
+    void updateWidth();
     QRect rect();
     QRectF rectF(int a=0);
     QRectF centerRect();

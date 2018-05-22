@@ -1,6 +1,7 @@
 #ifndef FRMMAIN_H
 #define FRMMAIN_H
 
+#include <QDesktopWidget>
 #include <QOpenGLWidget>
 #include <QPainter>
 #include <QWheelEvent>
@@ -93,7 +94,7 @@ private:
     KeepAwakeHelper helper; //verhindert, dass app in standby geht
 #endif
     Shop *shop;
-    const QString version = "1.01";
+    const QString version = "1.02";
     QString newestPost = "2561200";
     Account account;
     bool newPost = false;
@@ -155,6 +156,13 @@ private:
     QPixmap towerGroundPx = QPixmap(":/data/images/towers/base.png");
     QPixmap towerBasePx = QPixmap(":/data/images/towers/base2.png");
     QPixmap towerRepostBasePx = QPixmap(":/data/images/towers/repost.png");
+    QPixmap circleSplit1 = QPixmap(":/data/images/enemys/death/circle1.png");
+    QPixmap circleSplit2 = QPixmap(":/data/images/enemys/death/circle2.png");
+    QPixmap circleSplit3 = QPixmap(":/data/images/enemys/death/circle3.png");
+    QPixmap rauteSplit1 = QPixmap(":/data/images/enemys/death/raute1.png");
+    QPixmap rauteSplit2 = QPixmap(":/data/images/enemys/death/raute2.png");
+    QPixmap rauteSplit3 = QPixmap(":/data/images/enemys/death/raute3.png");
+    QPixmap rauteSplit4 = QPixmap(":/data/images/enemys/death/raute4.png");
     QPixmap repostMark = QPixmap(":/data/images/towers/repost_mark.png");
     QPixmap herzPx = QPixmap(":/data/images/towers/herz.png");
     QPixmap minus = QPixmap(":/data/images/towers/minus.png");
@@ -237,7 +245,7 @@ private:
         poisonTowerCost = 300, minigunTowerCost = 200;
     const double upgradeHighConst = 0.75, upgradeLowConst = 0.5;
     int shaking = 0;
-    int shakeX = 0, shakeY=0, shakeIntensity = 2;
+    int shakeX = 0, shakeY=0, shakeIntensityX = 2, shakeIntensityY = 2;
     QFont f = QFont("Arial");
     /*Active-States
     0 - Hauptmenü
@@ -254,6 +262,7 @@ private:
     int moveAn = 0;
     double transX = 0;
     double transY = 0;
+    double shekelCoinSize = 0;
     bool accepted = false;
     int begin = -1;
     QPoint mPos;
@@ -278,6 +287,7 @@ private:
     double blendRectOpacity = 0;
     int fdir = 0;
     QRectF target;
+    QRectF pr0coinRect = QRectF(0,0,100,100);
     QRect towerMenuRect = QRect(0,150,600,930);
     QRect towerMenuRectAnimation = QRect(-600,150,500,930);
     QRect minusTowerRect = QRect(50,200,150,150);
@@ -329,6 +339,7 @@ private:
     bool key = true;
     bool exit = false;
     bool soundEnabled = true;
+    bool superfastUnlocked = false;
     int editorSelected = 0;
     int playingSpeed = 1;
     int mCompileError = -1;
@@ -362,8 +373,10 @@ private:
     void initPhysics();
     void restore(int amount);
     void addTowerTargets(Tower *t);
+    void shake(int duration, int shakeIX, int shakeIY);
     void resetTimers();
     void checkPush(b2Body *delBody);
+    void createDeathProjectiles(QRect rect, bool circle = true);
     void createBounds();
     void drawIngame(QPainter &painter);
     void drawHUD(QPainter &painter);
@@ -392,8 +405,10 @@ private:
     void saveMaps();
     void saveOptions();
     void loadOptions();
+    void loadItems();
     void changePlaylist(int playlist);
     int createPath();
+    void loginAccount();
     void createAccount();
     void saveAccount();
     void accountCreationError();
@@ -450,6 +465,7 @@ private slots:
     void on_mapBuy(int subSelected);
     void on_buyError(int id);
     void on_purchaseShekel(QString paket);
+    void on_buyItem(int pos);
 
 protected:
     bool event(QEvent *e) override;

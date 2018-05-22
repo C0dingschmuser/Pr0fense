@@ -96,11 +96,13 @@ void Enemy::reduceHealth(double amount)
 {
     if(repost && !soonBanned && !poison) amount *= 1.5;
     health -= amount;
+    flash = 10;
     if(health<0) health = 0;
 }
 
 void Enemy::free()
 {
+    flash = 0;
     blocked = false;
     body = nullptr;
     pos = QRectF();
@@ -123,6 +125,27 @@ void Enemy::updatePos()
 {
     if(!physicsInitialized||body==nullptr) return;
     this->pos = QRectF(body->GetPosition().x-pos.width()/2,body->GetPosition().y-pos.height()/2,pos.width(),pos.height());
+}
+
+void Enemy::calcWidth()
+{
+    healthWidth = this->rectF().width()*((double)health/maxHealth);
+    if(healthWidth < 1) healthWidth = 1;
+    healthWidthTarget = healthWidth;
+
+}
+
+void Enemy::updateWidth()
+{
+    if(health < 1) {
+        healthWidth = 1;
+    }
+    healthWidthTarget = this->rectF().width()*((double)health/maxHealth);
+    if(healthWidthTarget < 1) healthWidthTarget = 1;
+    healthWidth -= 0.3;
+    if(healthWidth <= healthWidthTarget) {
+        healthWidth = healthWidthTarget;
+    }
 }
 
 QRect Enemy::rect()

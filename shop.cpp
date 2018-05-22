@@ -27,6 +27,8 @@ Shop::Shop(QObject *parent) : QObject(parent)
     shekelPacks.push_back(6000);
     shekelPacks.push_back(75000);
 
+    items.push_back(Item("Superschnell", "Schaltet 3x Geschwindigkeit frei", 1000, 0));
+
     int y = 0;
     int a = 0;
     for(uint i = 0;i < 8 + 1; i++) {
@@ -64,6 +66,9 @@ void Shop::shopClicked(QRect pos)
         } else if(pos.intersects(positions[2])) {
             subSelected = -1;
             subMenu = 3; //shekelpacks
+        } else if(pos.intersects(positions[3])) {
+            subSelected = -1;
+            subMenu = 4;
         }
         break;
     case 1: //maps
@@ -160,6 +165,20 @@ void Shop::shopClicked(QRect pos)
             emit buyShekel(paket);
         }
         break;
+    case 4: //items
+        for(uint i = 0; i < items.size(); i++) {
+            if(pos.intersects(towerPositions[i])) {
+                subSelected = i;
+            }
+        }
+        if(pos.intersects(buyRect) && items[subSelected].locked) {
+            if(shekel >= items[subSelected].price) {
+                shekel -= items[subSelected].price;
+                items[subSelected].locked = false;
+                emit buyItem(subSelected);
+            }
+        }
+        break;
     }
 }
 
@@ -171,6 +190,7 @@ void Shop::drawShop(QPainter &painter)
         painter.drawPixmap(positions[0], mapsPx);
         painter.drawPixmap(positions[1], towerPx);
         painter.drawPixmap(positions[2], shekelPx);
+        painter.drawPixmap(positions[3], itemPx);
         break;
     case 1: //maps
         for(int i = 0; i < (int)mainlvls; i++) {
@@ -232,6 +252,21 @@ void Shop::drawShop(QPainter &painter)
                 painter.setPen(Qt::NoPen);
                 painter.drawPixmap(buyRect.x() - 315, buyRect.y() - 5, 650, 85, auswahlpx);
             }
+        }
+        break;
+    case 4: //Items
+        for(int i = 0; i < (int)items.size(); i++) {
+            if(i == subSelected) {
+                painter.setOpacity(1);
+            } else painter.setOpacity(0.6);
+
+            painter.drawPixmap(towerPositions[i], items[i].image);
+            if(items[i].locked) {
+                painter.drawPixmap(towerPositions[i], lock_quadratPx);
+                painter.setOpacity(1);
+                if(i == subSelected) drawPrice(painter, buyRect, items[i].price);
+            }
+
         }
         break;
     }

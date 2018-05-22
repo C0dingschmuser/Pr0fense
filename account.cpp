@@ -79,6 +79,32 @@ int Account::registerAccount(QString name, QString pw)
     return ok;
 }
 
+int Account::login(QString name, QString pw)
+{
+    int ok = -1;
+    socket->connectToHost(ip,38910);
+    socket->waitForConnected(1500);
+    if(socket->state() == QTcpSocket::ConnectedState) {
+        QString msg = ".5#" + name + "#" + generatePwHash(pw) + "#~";
+        socket->write(msg.toUtf8());
+        socket->waitForBytesWritten(2000);
+        socket->waitForReadyRead(2000);
+        QString response = socket->readAll();
+        if(response.at(0) == ".") {
+            response.remove(".");
+            response.remove("#~");
+            ok = response.toInt();
+            if(ok == 1) {
+                username = name;
+                password = pw;
+                accountState = 1;
+            }
+        }
+        socket->close();
+    }
+    return ok;
+}
+
 void Account::registerPurchase(QString receipt, QString purchase)
 {
     QTcpSocket *tmpSocket = new QTcpSocket();

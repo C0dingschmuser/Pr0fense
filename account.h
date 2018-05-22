@@ -18,6 +18,7 @@ public:
     void checkAccount();
     int checkName(QString name);
     int registerAccount(QString name, QString pw);
+    int login(QString name, QString pw);
     void registerPurchase(QString receipt, QString purchase);
 };
 

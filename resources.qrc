@@ -109,5 +109,14 @@
         <file>data/images/ui/shop/tuerme/tower0.png</file>
         <file>data/images/schloss_quadrat.png</file>
         <file>data/images/ui/account_waiting.png</file>
+        <file>data/images/enemys/death/circle1.png</file>
+        <file>data/images/enemys/death/circle2.png</file>
+        <file>data/images/enemys/death/circle3.png</file>
+        <file>data/images/enemys/death/raute1.png</file>
+        <file>data/images/enemys/death/raute2.png</file>
+        <file>data/images/enemys/death/raute3.png</file>
+        <file>data/images/enemys/death/raute4.png</file>
+        <file>data/images/ui/shop/Items.png</file>
+        <file>data/images/ui/shop/items/item0.png</file>
     </qresource>
 </RCC>

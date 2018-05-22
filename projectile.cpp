@@ -31,7 +31,12 @@ void Projectile::update(bool full)
         vx = qCos(qDegreesToRadians((double)this->angle));
         vy = qSin(qDegreesToRadians((double)this->angle));
     } else {
-        rect.moveTo(rect.x()+vx*vel,rect.y()+vy*vel);
+        double velocity = vel;
+        if(type == 5) {
+            steps++;
+            velocity = (vel/40)*steps;
+        }
+        rect.moveTo(rect.x()+vx*velocity,rect.y()+vy*velocity);
     }
     if(type&&opacity) {
         opacity -= opacityDecAm;
