@@ -42,6 +42,7 @@ public:
     int animationMax = 0;
     double pspeed = 0;
     double dmg = 0;
+    int disabled = 0;
     int stun = 0;
     int repost = 0;
     int range = 0;

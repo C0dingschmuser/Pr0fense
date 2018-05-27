@@ -21,6 +21,7 @@ public:
     int generateEnemyType(bool hasFlak = false);
     int calcShekel();
     void updateEnemysPerWave(bool fullTime, int mapWidth);
+    int startNextWave(int width);
     void resetWave(bool full = false);
     void addEnemy(int type);
 };

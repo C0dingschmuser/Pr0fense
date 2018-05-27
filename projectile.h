@@ -39,6 +39,7 @@ public:
     void init(QRectF rect, int angle, double dmg, Enemy *target, double vx, double vy, double vel=2.5, int stun=0, int repost=0, int pxID=0);
     void init2(QRectF rect, int type, int angle, double vx, double vy, double opacityDecAm, double vel=2.5, int pxID=1, double opacity=1);
     void init3(QString text, QPoint pos, int angle, double vx, double vy, double opacityDecAm, double vel=2.5, double opacity=1);
+    void init_arc(QRectF rect, double vel, double opacity, double opacityDecAm, QColor color, int width);
     void free();
     QString toString();
     QRectF crect();

@@ -66,7 +66,8 @@ QString Tower::toString()
             QString::number(turnlvl) + "," +
             QString::number(price) + "," +
             QString::number(animation) + "," +
-            QString::number(animationMax);
+            QString::number(animationMax) + "," +
+            QString::number(disabled);
 
 }
 
@@ -140,8 +141,8 @@ QString Tower::getInfo(int type, int pos, bool rem)
             ret = "Lasertower:";
         } else {
             ret = "\n"
-                  "Verschießt einen Laser, der kon \n"
-                  "tinuierlich Schaden verursacht";
+                  "Verschießt einen Laser, der kon\n"
+                  "tinuierlich Schaden macht";
         }
     break;
     case TOWER_POISON:

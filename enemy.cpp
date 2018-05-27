@@ -37,11 +37,11 @@ void Enemy::initPhysics(b2World *world)
     b2CircleShape circleShape;
     b2PolygonShape polyShape;
     b2FixtureDef fixtureDef;
-    if(type != 7) { //wenn nicht legende
+    //if(type != 7) { //wenn nicht legende
         circleShape.m_p.Set(0,0);
         circleShape.m_radius = pos.width() / 2;
         fixtureDef.shape = &circleShape;
-    } else if( type == 7){
+    /*} else if( type == 7){
         QPolygonF polygon = Engine::getRauteFromRect(pos);
         b2Vec2 array[4];
         for(uint i = 0; i < 4; i++) {
@@ -49,8 +49,8 @@ void Enemy::initPhysics(b2World *world)
         }
         polyShape.Set(array, 4);
         fixtureDef.shape = &polyShape;
-    }
-    fixtureDef.density = 0;
+    }*/
+    fixtureDef.density = getDensity(type);
     fixtureDef.filter.categoryBits = ownCategoryBits;
     fixtureDef.filter.maskBits = collidingCategoryBits;
     body->CreateFixture(&fixtureDef);
@@ -96,6 +96,7 @@ void Enemy::reduceHealth(double amount)
 {
     if(repost && !soonBanned && !poison) amount *= 1.5;
     health -= amount;
+    updateWidth(0);
     flash = 10;
     if(health<0) health = 0;
 }
@@ -135,17 +136,55 @@ void Enemy::calcWidth()
 
 }
 
-void Enemy::updateWidth()
+void Enemy::updateWidth(double amount)
 {
     if(health < 1) {
         healthWidth = 1;
+        healthWidthTarget = 1;
+    } else {
+        healthWidthTarget = this->rectF().width()*((double)health/maxHealth);
+        if(healthWidthTarget < 1) healthWidthTarget = 1;
+        if(amount > 0) healthWidth -= amount;
+        if(healthWidth <= healthWidthTarget) {
+            healthWidth = healthWidthTarget;
+        }
     }
-    healthWidthTarget = this->rectF().width()*((double)health/maxHealth);
-    if(healthWidthTarget < 1) healthWidthTarget = 1;
-    healthWidth -= 0.3;
-    if(healthWidth <= healthWidthTarget) {
-        healthWidth = healthWidthTarget;
+}
+
+int Enemy::getDensity(int type)
+{
+    int density = 0;
+    switch(type) {
+    case ENEMY_FLIESE:
+        density = 1;
+        break;
+    case ENEMY_GEBANNT:
+        density = 1;
+        break;
+    case ENEMY_NEUSCHWUCHTEL:
+        density = 2;
+        break;
+    case ENEMY_SCHWUCHTEL:
+        density = 3;
+        break;
+    case ENEMY_SPENDER:
+        density = 3;
+        break;
+    case ENEMY_ALTSCHWUCHTEL:
+        density = 5;
+        break;
+    case ENEMY_MOD:
+        density = 10;
+        break;
+    case ENEMY_ADMIN:
+        density = 12;
+        break;
+    case ENEMY_LEGENDE:
+        density = 20;
+        break;
     }
+    //density = 0;
+    return density;
 }
 
 QRect Enemy::rect()
@@ -205,5 +244,7 @@ QString Enemy::toString()
             QString::number(maxPoison) + "," +
             QString::number(poisonDmg) + "," +
             QString::number(newdir) + "," +
-            QString::number(blocked);
+            QString::number(blocked) + "," +
+            QString::number(reload) + "," +
+            QString::number(maxReload);
 }

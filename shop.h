@@ -14,7 +14,7 @@ class Item
 {
 public:
     Item() {}
-    Item(QString name, QString description, int price, int num)
+    Item(QString name, QString description, double price, int num)
     {
         this->name = name;
         this->description = description;
@@ -24,7 +24,7 @@ public:
     QString name;
     QString description;
     QPixmap image;
-    int price;
+    double price;
     bool locked = true;
 };
 
@@ -37,6 +37,11 @@ private:
     QPixmap towerPx = QPixmap(":/data/images/ui/shop/tuerme.png");
     QPixmap itemPx = QPixmap(":/data/images/ui/shop/Items.png");
     QPixmap auswahlpx = QPixmap(":/data/images/auswahl_buy.png");
+    QPixmap shekelMoney = QPixmap(":/data/images/shekel.png");
+    QPixmap lockPx = QPixmap(":/data/images/schloss.png");
+    QPixmap lock_quadratPx = QPixmap(":/data/images/schloss_quadrat.png");
+    QPixmap shekelPlusPx = QPixmap(":/data/images/ui/shop/PlusButton.png");
+    QPixmap sternPx = QPixmap(":/data/images/stern.png");
     std::vector <QPixmap> towers;
     std::vector <QPixmap> shekelPacksPx;
     QRect buyRect = QRect(1525, 975, 325, 168);
@@ -44,13 +49,9 @@ private:
     std::vector <QRect> positions;
     std::vector <QRect> towerPositions;
     uint selected = 0;
-    int subSelected = 0;
 
 public:
     explicit Shop(QObject *parent = nullptr);
-    QPixmap shekelMoney = QPixmap(":/data/images/shekel.png");
-    QPixmap lockPx;
-    QPixmap lock_quadratPx = QPixmap(":/data/images/schloss_quadrat.png");
     QColor grau = QColor(22,22,24);
     QColor edlerSpender = QColor(28,185,146);
     std::vector <QPixmap> lvlPreviews;
@@ -62,6 +63,7 @@ public:
     std::vector <Item> items;
     QFont f;
     int subMenu = 0;
+    int subSelected = 0;
     uint mainlvls;
     unsigned long long shekel = 100;
     void shopClicked(QRect pos);

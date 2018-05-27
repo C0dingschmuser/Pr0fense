@@ -12,8 +12,11 @@ public:
     b2Body *body = nullptr;
     int type;
     Tower *t = nullptr;
-    int towernum;
-    int ran;
+    int towernum = -1;
+    int ran = 0;
+    int animation = 0;
+    bool anDir = 0;
+    double opacity = 0;
     QRect rect();
     void initPhysics(b2World *world);
 

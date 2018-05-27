@@ -84,7 +84,8 @@ SOURCES += \
     path.cpp \
     targetdefinition.cpp \
     msgbox.cpp \
-    account.cpp
+    account.cpp \
+    settings.cpp
 
 
 android: SOURCES += lockhelper.cpp
@@ -150,7 +151,8 @@ HEADERS += \
     path.h \
     targetdefinition.h \
     msgbox.h \
-    account.h
+    account.h \
+    settings.h
 
 
 android: HEADERS += lockhelper.h
@@ -158,7 +160,9 @@ android: HEADERS += lockhelper.h
 FORMS += \
         frmmain.ui
 
-CONFIG += mobility c++14 resources_big
+
+PRECOMPILED_HEADER = stable.h
+CONFIG += mobility c++14 resources_big precompile_header
 MOBILITY =
 
 DISTFILES += \

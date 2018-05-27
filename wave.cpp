@@ -43,7 +43,7 @@ int Wave::generateEnemyType(bool hasFlak)
                 }
             }
         }
-        if(waveCount % 10 == 0 && waveCount && max >= ENEMY_MOD) {
+        if(waveCount % 10 == 0 && waveCount && max >= ENEMY_MOD && enemysPerWave <= 11) {
             //Bosswave
             if(!legenden) {
                 enemyType = ENEMY_LEGENDE;
@@ -86,9 +86,10 @@ int Wave::calcShekel()
     int shekel = 0;
     if(waveCount) {
         if(waveCount % 10 == 0) {
-            shekel = 30;
-            if(waveCount > 20) shekel = 40;
-            if(waveCount > 30) shekel = 50;
+            shekel = 10;
+            if(waveCount > 50) shekel = 20;
+            if(waveCount > 80) shekel = 30;
+            if(waveCount > 120) shekel = 40;
         }
     }
     return shekel;
@@ -119,6 +120,15 @@ void Wave::updateEnemysPerWave(bool fullTime, int mapWidth)
     }
     enemysPerWave = rsp;
     maxEnemysPerWave = enemysPerWave;
+}
+
+int Wave::startNextWave(int width)
+{
+    int shekel = calcShekel();
+    waveCount++;
+    updateEnemysPerWave(false, width);
+    resetWave();
+    return shekel;
 }
 
 void Wave::resetWave(bool full)

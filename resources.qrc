@@ -118,5 +118,27 @@
         <file>data/images/enemys/death/raute4.png</file>
         <file>data/images/ui/shop/Items.png</file>
         <file>data/images/ui/shop/items/item0.png</file>
+        <file>data/images/qmark.png</file>
+        <file>data/images/settings.png</file>
+        <file>data/images/ui/move.png</file>
+        <file>data/images/Gras/gras0.png</file>
+        <file>data/images/Gras/gras1.png</file>
+        <file>data/images/Gras/gras2.png</file>
+        <file>data/images/Gras/gras3.png</file>
+        <file>data/images/PlusButton.png</file>
+        <file>data/images/stern.png</file>
+        <file>data/images/towers/repost/repost0.png</file>
+        <file>data/images/towers/repost/repost1.png</file>
+        <file>data/images/towers/repost/repost2.png</file>
+        <file>data/images/towers/repost/repost3.png</file>
+        <file>data/images/towers/repost/repost4.png</file>
+        <file>data/images/towers/repost/repost5.png</file>
+        <file>data/images/towers/repost/repost6.png</file>
+        <file>data/images/towers/repost/repost7.png</file>
+        <file>data/images/towers/repost/repost8.png</file>
+        <file>data/images/towers/repost/repost9.png</file>
+        <file>data/images/ui/Datenschutz.png</file>
+        <file>data/images/ui/Nutzungsbedingungen.png</file>
+        <file>data/images/ui/speed3_popup.png</file>
     </qresource>
 </RCC>

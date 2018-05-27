@@ -19,15 +19,15 @@ Shop::Shop(QObject *parent) : QObject(parent)
     shekelPrices.push_back(349.99);
 
     shekelPacks.push_back(50);
-    shekelPacks.push_back(125);
-    shekelPacks.push_back(275);
+    shekelPacks.push_back(100);
+    shekelPacks.push_back(300);
     shekelPacks.push_back(600);
-    shekelPacks.push_back(1325);
-    shekelPacks.push_back(2750);
+    shekelPacks.push_back(1300);
+    shekelPacks.push_back(2800);
     shekelPacks.push_back(6000);
     shekelPacks.push_back(75000);
 
-    items.push_back(Item("Superschnell", "Schaltet 3x Geschwindigkeit frei", 1000, 0));
+    items.push_back(Item("speed_superfast", "Schaltet 3x Geschwindigkeit frei", 0.99, 0));
 
     int y = 0;
     int a = 0;
@@ -172,10 +172,14 @@ void Shop::shopClicked(QRect pos)
             }
         }
         if(pos.intersects(buyRect) && items[subSelected].locked) {
-            if(shekel >= items[subSelected].price) {
-                shekel -= items[subSelected].price;
-                items[subSelected].locked = false;
-                emit buyItem(subSelected);
+            if(items[subSelected].name.contains("_")) { //InApp
+                emit buyShekel(items[subSelected].name);
+            } else {
+                if(shekel >= items[subSelected].price) {
+                    shekel -= items[subSelected].price;
+                    items[subSelected].locked = false;
+                    emit buyItem(subSelected);
+                }
             }
         }
         break;
@@ -261,10 +265,31 @@ void Shop::drawShop(QPainter &painter)
             } else painter.setOpacity(0.6);
 
             painter.drawPixmap(towerPositions[i], items[i].image);
+            if(items[i].name.contains("_")) {
+
+                painter.drawPixmap(QRect(towerPositions[i].x()+towerPositions[i].width()-80,
+                                         towerPositions[i].y(),
+                                         75,
+                                         75),
+                                   sternPx);
+            }
             if(items[i].locked) {
                 painter.drawPixmap(towerPositions[i], lock_quadratPx);
                 painter.setOpacity(1);
-                if(i == subSelected) drawPrice(painter, buyRect, items[i].price);
+                if(i == subSelected) {
+                    painter.drawPixmap(buyRect.x() - 65, buyRect.y() - 5, 365, 85, auswahlpx);
+                    f.setPixelSize(48);
+                    f.setBold(true);
+                    painter.setFont(f);
+                    painter.setPen(Qt::white);
+                    painter.drawText(QRect(buyRect.x() - 50,
+                                           buyRect.y() + 10,
+                                           buyRect.width()+100,
+                                           75),
+                                     Qt::AlignLeft,
+                                     "Kaufen ("+QString::number(items[i].price,'f',2)+" €)");
+                    painter.setPen(Qt::NoPen);
+                }
             }
 
         }

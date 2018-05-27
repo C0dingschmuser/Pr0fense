@@ -31,14 +31,18 @@ void Projectile::update(bool full)
         vx = qCos(qDegreesToRadians((double)this->angle));
         vy = qSin(qDegreesToRadians((double)this->angle));
     } else {
-        double velocity = vel;
-        if(type == 5) {
-            steps++;
-            velocity = (vel/40)*steps;
+        if(type != 6) {
+            double velocity = vel;
+            if(type == 5 || type == 7) {
+                steps++;
+                velocity = (vel/40)*steps;
+            }
+            rect.moveTo(rect.x()+vx*velocity,rect.y()+vy*velocity);
+        } else {
+            rect.adjust(-vel,-vel,vel,vel);
         }
-        rect.moveTo(rect.x()+vx*velocity,rect.y()+vy*velocity);
     }
-    if(type&&opacity) {
+    if(type && opacity) {
         opacity -= opacityDecAm;
         if(opacity<0) opacity = 0;
     }
@@ -107,6 +111,20 @@ void Projectile::init3(QString text, QPoint pos, int angle, double vx, double vy
     this->opacityDecAm = opacityDecAm;
     this->vel = vel;
     this->opacity = opacity;
+}
+
+void Projectile::init_arc(QRectF rect, double vel, double opacity, double opacityDecAm, QColor color, int width)
+{
+    isUsed = true;
+    del = false;
+    steps = 0;
+    this->color = color;
+    this->rect = rect;
+    this->angle = width;
+    this->opacity = opacity;
+    this->opacityDecAm = opacityDecAm;
+    this->vel = vel;
+    this->type = 6;
 }
 
 void Projectile::free()

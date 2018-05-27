@@ -39,6 +39,8 @@ public:
     int maxPoison = 0;
     int cpos; //Knoten von Weg
     int dir;
+    int reload = 0;
+    int maxReload = 0;
     double health; //Leben
     double preHealth;
     double maxHealth;
@@ -65,7 +67,8 @@ public:
     void free();
     void updatePos();
     void calcWidth();
-    void updateWidth();
+    void updateWidth(double amount = 0.3);
+    static int getDensity(int type);
     QRect rect();
     QRectF rectF(int a=0);
     QRectF centerRect();
