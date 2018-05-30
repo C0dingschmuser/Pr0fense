@@ -28,3 +28,5 @@ Mit dem Mapeditor könnt ihr eigene Karten erstellen. Unten Rechts seht ihr den 
 <img src="https://raw.githubusercontent.com/FireDiver/Pr0fense/master/data/images/ui/move.png" width="25" height="25" /> **Bewegungsmodus** In diesem Modus könnt ihr euch auf der Karte umschauen
 
 <img src="https://raw.githubusercontent.com/FireDiver/Pr0fense/master/data/images/ui/edit.png" width="25" height="25" /> **Editmodus** In diesem Modus könnt ihr Blöcke platzieren. Durchgehendes Platzieren ist möglich.
+
+Durch antippen des Symbols ändert ihr den Modus.
