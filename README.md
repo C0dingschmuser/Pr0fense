@@ -1,5 +1,12 @@
 # Pr0fense
 
+1. [Was ist Pr0fense](https://github.com/FireDiver/Pr0fense/blob/master/README.md#L12-L13)  
+2. [Wie Funktioniert das](https://github.com/FireDiver/Pr0fense/blob/master/README.md#L17-L21)   
+  2.1 [Fortschrittssystem](https://github.com/FireDiver/Pr0fense/blob/master/README.md#L25)  
+  2.2 [Mapeditor](https://github.com/FireDiver/Pr0fense/blob/master/README.md#L33-L39)  
+  2.3 [DailyBonusBenis](https://github.com/FireDiver/Pr0fense/blob/master/README.md#L43)
+3. [FAQ](https://github.com/FireDiver/Pr0fense/blob/master/README.md#L47-L48)  
+
 ### 1. Was ist Pr0fense
 
 Ein Tower Defense Spiel im Stile der alten Klassiker, wer kennt sie nicht?
@@ -30,3 +37,12 @@ Mit dem Mapeditor könnt ihr eigene Karten erstellen. Unten Rechts seht ihr den 
 <img src="https://raw.githubusercontent.com/FireDiver/Pr0fense/master/data/images/ui/edit.png" width="25" height="25" /> **Editmodus** In diesem Modus könnt ihr Blöcke platzieren. Durchgehendes Platzieren ist möglich.
 
 Durch antippen des Symbols ändert ihr den Modus.
+
+#### 2.3 DailyBonusBenis
+
+Ihr könnt jeden Tag eine Belohnung erhalten, wenn ihr mindestens 10 Runden spielt. Je mehr Tage ihr nacheinander spielt, desto größer werden die Belohnungen. Das Fenster erscheint sobald ihr die 10 Runden gespielt habt und wieder im Hauptmenü seid. Wenn ihr einen oder mehrere Tage aussetzt wird der Bonus zurückgesetzt.
+
+### FAQ
+
+F: Wie kriegt man Shekel?  
+A: Siehe [Fortschrittssystem](https://github.com/FireDiver/Pr0fense/blob/master/README.md#L25)  
