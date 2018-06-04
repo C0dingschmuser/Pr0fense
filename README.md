@@ -1,11 +1,11 @@
 # Pr0fense
 
-1. [Was ist Pr0fense](https://github.com/FireDiver/Pr0fense/blob/master/README#L12-L13)  
-2. [Wie Funktioniert das](https://github.com/FireDiver/Pr0fense/blob/master/README#L17-L21)   
-  2.1 [Fortschrittssystem](https://github.com/FireDiver/Pr0fense/blob/master/README#L25)  
-  2.2 [Mapeditor](https://github.com/FireDiver/Pr0fense/blob/master/README.md#L33-L39)  
-  2.3 [DailyBonusBenis](https://github.com/FireDiver/Pr0fense/blob/master/README#L43)
-3. [FAQ](https://github.com/FireDiver/Pr0fense/blob/master/README#L47-L48)  
+1. [Was ist Pr0fense](https://github.com/FireDiver/Pr0fense/blob/master/README.md#1-was-ist-pr0fense)  
+2. [Wie Funktioniert das](https://github.com/FireDiver/Pr0fense/blob/master/README.md#2-wie-funktioniert-das)   
+  2.1 [Fortschrittssystem](https://github.com/FireDiver/Pr0fense/blob/master/README.md#21-fortschrittssystem)  
+  2.2 [Mapeditor](https://github.com/FireDiver/Pr0fense/blob/master/README.md#22-mapeditor)  
+  2.3 [DailyBonusBenis](https://github.com/FireDiver/Pr0fense/blob/master/README.md#23-dailybonusbenis)
+3. [FAQ](https://github.com/FireDiver/Pr0fense/blob/master/README.md#3-faq)  
 
 ### 1. Was ist Pr0fense
 
@@ -42,7 +42,7 @@ Durch antippen des Symbols ändert ihr den Modus.
 
 Ihr könnt jeden Tag eine Belohnung erhalten, wenn ihr mindestens 10 Runden spielt. Je mehr Tage ihr nacheinander spielt, desto größer werden die Belohnungen. Das Fenster erscheint sobald ihr die 10 Runden gespielt habt und wieder im Hauptmenü seid. Wenn ihr einen oder mehrere Tage aussetzt wird der Bonus zurückgesetzt.
 
-### FAQ
+### 3. FAQ
 
 F: Wie kriegt man Shekel?  
 A: Siehe [Fortschrittssystem](https://github.com/FireDiver/Pr0fense/blob/master/README#L25)  
