@@ -1,11 +1,11 @@
 # Pr0fense
 
-1. [Was ist Pr0fense](https://github.com/FireDiver/Pr0fense/blob/master/README.md#L12-L13)  
-2. [Wie Funktioniert das](https://github.com/FireDiver/Pr0fense/blob/master/README.md#L17-L21)   
-  2.1 [Fortschrittssystem](https://github.com/FireDiver/Pr0fense/blob/master/README.md#L25)  
+1. [Was ist Pr0fense](https://github.com/FireDiver/Pr0fense/blob/master/README#L12-L13)  
+2. [Wie Funktioniert das](https://github.com/FireDiver/Pr0fense/blob/master/README#L17-L21)   
+  2.1 [Fortschrittssystem](https://github.com/FireDiver/Pr0fense/blob/master/README#L25)  
   2.2 [Mapeditor](https://github.com/FireDiver/Pr0fense/blob/master/README.md#L33-L39)  
-  2.3 [DailyBonusBenis](https://github.com/FireDiver/Pr0fense/blob/master/README.md#L43)
-3. [FAQ](https://github.com/FireDiver/Pr0fense/blob/master/README.md#L47-L48)  
+  2.3 [DailyBonusBenis](https://github.com/FireDiver/Pr0fense/blob/master/README#L43)
+3. [FAQ](https://github.com/FireDiver/Pr0fense/blob/master/README#L47-L48)  
 
 ### 1. Was ist Pr0fense
 
@@ -45,4 +45,4 @@ Ihr könnt jeden Tag eine Belohnung erhalten, wenn ihr mindestens 10 Runden spie
 ### FAQ
 
 F: Wie kriegt man Shekel?  
-A: Siehe [Fortschrittssystem](https://github.com/FireDiver/Pr0fense/blob/master/README.md#L25)  
+A: Siehe [Fortschrittssystem](https://github.com/FireDiver/Pr0fense/blob/master/README#L25)  
