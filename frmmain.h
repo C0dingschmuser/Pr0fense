@@ -26,6 +26,8 @@
 #include <QDesktopServices>
 #include <QScreen>
 #include <QClipboard>
+#include <QSettings>
+#include <QFutureWatcher>
 #include "Box2D/Box2D.h"
 #include "tower.h"
 #include "objectpool.h"
@@ -38,6 +40,7 @@
 #include "msgbox.h"
 #include "account.h"
 #include "settings.h"
+#include "dailyreward.h"
 #ifdef Q_OS_ANDROID
 #include "lockhelper.h"
 #endif
@@ -96,10 +99,14 @@ private:
     KeepAwakeHelper helper; //verhindert, dass app in standby geht
 #endif
     Shop *shop;
-    constexpr static const double version = 1.032;
-    int newestPost = 2561200;
+    constexpr static const double version = 1.035;
+    int newestPost = 2572191;
+    int connectionTries = 0;
     Account account;
     Settings *settings;
+    DailyReward *dailyReward;
+    QFutureWatcher <void> watcher;
+    int futureID = 0;
     bool newPost = false;
     b2World *world=nullptr;
     b2Body *wall1=nullptr,*wall2=nullptr,*wall3=nullptr,*wall4=nullptr;
@@ -110,7 +117,10 @@ private:
     const QString serverIP = "flatterfogel.ddns.net";
     bool outdated = false;
     QMutex mutex;
-    QDate latestTestingDate = QDate(2018,5,01);
+    bool dateVerified = false;
+    QDate currentDate = QDate::currentDate();
+    QDate lastPlayedDate = QDate::currentDate();
+    QDate lastRewardDate = QDate(2000,1,1);
     bool DEBUG = false;
     QElapsedTimer timerD;
     QElapsedTimer timerM;
@@ -129,7 +139,9 @@ private:
     QTimer *t_physics;
     QTimer *t_idle;
     QTimer *t_grasAn;
+    QTimer *t_towerTarget;
     QThread *workerThread;
+    QThread *projectileThread;
     double scaleX;
     double scaleY;
     double scaleFHDX;
@@ -154,6 +166,12 @@ private:
     std::vector <QPixmap> minigunTowerPx;
     std::vector <QPixmap> grasAnimation;
     std::vector <QPixmap> repostAnimation;
+    std::vector <QPixmap> circleEnemyDeath;
+    std::vector <QPixmap> flyingEnemyDeath;
+    std::vector <QPixmap> bossEnemyDeath;
+    std::vector <QPixmap> circleEnemys;
+    std::vector <QPixmap> flyingEnemys;
+    QPixmap bossPx = QPixmap(":/data/images/enemys/boss/Boss1.png");
     QPixmap mapTile = QPixmap(":/data/images/maptile.png");
     QPixmap turmtile = QPixmap(":/data/images/turmtile.png");
     QPixmap emptytile = QPixmap(":/data/images/empty.png");
@@ -200,6 +218,8 @@ private:
     QPixmap btnContinue = QPixmap(":/data/images/ui/weiterspielen.png");
     QPixmap btnContinueGrey = QPixmap(":/data/images/ui/deaktiviert/weiterspielen_grau.png");
     QPixmap btnStopPx = QPixmap(":/data/images/ui/stop.png");
+    QPixmap btnStop2Px = QPixmap(":/data/images/ui/stop2.png");
+    QPixmap btnStop3Px = QPixmap(":/data/images/ui/stop3.png");
     QPixmap btnNormalPx = QPixmap(":/data/images/ui/normal.png");
     QPixmap btnFastPx = QPixmap(":/data/images/ui/fast.png");
     QPixmap btnSuperfastPx = QPixmap(":/data/images/ui/superfast.png");
@@ -225,6 +245,7 @@ private:
     QPixmap shekelPlusPx = QPixmap(":/data/images/PlusButton.png");
     QPixmap sternPx = QPixmap(":/data/images/stern.png");
     QPixmap settingsPx = QPixmap(":/data/images/settings.png");
+    QPixmap questionPx = QPixmap(":/data/images/qmark.png");
     QPixmap popupPx = QPixmap(":/data/images/ui/speed3_popup.png");
     //Playmenu
     QPixmap levelsPx = QPixmap(":/data/images/levels.png");
@@ -253,17 +274,19 @@ private:
     //</Farben>
     //<Standard>
     double zoomScale = 0;
-    const uint minusTowerCost = 50, herzTowerCost = 75, repostTowerCost = 125, benisTowerCost = 100,
-        banTowerCost = 300, sniperTowerCost = 250, flakTowerCost = 100, laserTowerCost = 175,
-        poisonTowerCost = 300, minigunTowerCost = 200;
+    const uint minusTowerCost = 50, herzTowerCost = 75, repostTowerCost = 150, benisTowerCost = 200,
+        banTowerCost = 250, sniperTowerCost = 350, flakTowerCost = 100, laserTowerCost = 300,
+        poisonTowerCost = 500, minigunTowerCost = 400;
     const double upgradeHighConst = 0.75, upgradeLowConst = 0.5;
     int shaking = 0;
+    int playedGames = 0;
     double shakeX = 0, shakeY=0, shakeIntensityX = 2, shakeIntensityY = 2;
     QFont f = QFont("Arial");
     /*Active-States
     0 - Hauptmenü
     1 - Ingame
     2 - Mapeditor*/
+    bool userDataLoaded = false;
     int active = STATE_SUSPENDED;
     uint upgradeCost = 0;
     int subActive = 0;
@@ -276,9 +299,11 @@ private:
     double transX = 0;
     double transY = 0;
     double shekelCoinSize = 0;
+    int beginFade = 500;
     bool accepted = false;
     bool canStartNextWave = false;
     bool editMode = 0;
+    bool cloudSaving = true;
     int begin = -1;
     QPoint mPos;
     QPointF mid;
@@ -294,6 +319,7 @@ private:
     int popup = 0;
     //Währung
     unsigned long long benis = 0;
+    QString benisSave = "11";
     int shekel = 0;
     //
     bool mapLoaded = false;
@@ -335,6 +361,7 @@ private:
     QRect shekelPlusRect = QRect(400, 335, 50, 50);
     QRect accountRect = QRect(50, 900, 100, 100);
     QRect settingsRect = QRect(200, 900, 100, 100);
+    QRect questionRect = QRect(350, 900, 100, 100);
     QRect popupRect = QRect(350,200,1280,720);
     //283 x 413
     QRect btnContinueRect = QRect(677,413,566,127);
@@ -363,6 +390,9 @@ private:
     bool key = true;
     bool exit = false;
     bool soundEnabled = true;
+    bool musicLoaded = false;
+    bool shekelLocked = false;
+    bool benisLocked = false;
     bool superfastUnlocked = false;
     int editorSelected = 0;
     int playingSpeed = 1;
@@ -384,6 +414,7 @@ private:
     bool suspended = false;
     bool loaded = false;
     bool error=false;
+    bool statusConn = false;
     int appState = Qt::ApplicationActive;
     const double NANO_TO_MILLI = 1000000.0;
     const uint mainLevels = 4;
@@ -398,10 +429,14 @@ private:
     void initPhysics();
     void restore(int amount);
     void addTowerTargets(Tower *t);
+    void setShekel(unsigned long long amount, bool save = true);
+    void setBenis(unsigned long long amount);
     void shake(int duration, double shakeIX, double shakeIY);
     void resetTimers();
     void checkPush(b2Body *delBody);
-    void createDeathProjectiles(QRect rect, bool circle = true);
+    void checkPush(Tile *t);
+    void getCollidingBits(int type, uint16_t &ownCategoryBits, uint16_t &collidingCategoryBits);
+    void createDeathProjectiles(QRect rect, int circle = true);
     void createBounds();
     void drawIngame(QPainter &painter);
     void drawHUD(QPainter &painter);
@@ -428,11 +463,12 @@ private:
     void loadLitteSprueche();
     void saveGameSave();
     void saveMaps();
-    void saveOptions(int customShekel = 0);
+    void saveOptions(int customShekel = 0, bool init = false);
     void loadOptions();
     void loadItems();
     void changePlaylist(int playlist);
     int createPath();
+    void createPathBoundaries();
     void loginAccount();
     void createAccount();
     void saveAccount();
@@ -456,6 +492,7 @@ private:
     void pauseGame();
     void error_string(QString e1,QString e2,QString e3);
     void error_save(QFile &file, QString msg = "Fehler beim laden!");
+    int calcProjectiles(int num);
     int sendDataToServer(QString data);
     int getEnemySizeByType(int type = 0);
     double getHealth(bool max = true);
@@ -488,13 +525,18 @@ private slots:
     void on_tphysics();
     void on_tidle();
     void on_tgrasAn();
+    void on_ttowerTarget();
     void on_mediaStateChanged(QMediaPlayer::MediaStatus status);
     void on_appStateChanged(Qt::ApplicationState state);
     void on_mapBuy(int subSelected);
     void on_buyError(int id);
     void on_purchaseShekel(QString paket);
     void on_buyItem(int pos);
+    void on_buyTower(int pos);
     void on_openPage(int id);
+    void on_setShekel(unsigned long long shekel, bool save = true);
+    void on_futureFinished();
+    void on_addBonus(int amount);
 
 protected:
     bool event(QEvent *e) override;

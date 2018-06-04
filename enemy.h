@@ -41,6 +41,7 @@ public:
     int dir;
     int reload = 0;
     int maxReload = 0;
+    int imgID = 0;
     double health; //Leben
     double preHealth;
     double maxHealth;

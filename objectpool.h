@@ -1,6 +1,7 @@
 #ifndef OBJECTPOOL_H
 #define OBJECTPOOL_H
 #include <QMutex>
+#include <QSharedPointer>
 #include "projectile.h"
 #include "enemy.h"
 

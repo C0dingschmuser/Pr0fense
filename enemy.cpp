@@ -246,5 +246,6 @@ QString Enemy::toString()
             QString::number(newdir) + "," +
             QString::number(blocked) + "," +
             QString::number(reload) + "," +
-            QString::number(maxReload);
+            QString::number(maxReload) + "," +
+            QString::number(imgID);
 }

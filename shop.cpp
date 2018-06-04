@@ -89,7 +89,7 @@ void Shop::shopClicked(QRect pos)
                 }
             }
             if(!ok) {
-                shekel -= lvlprices[subSelected];
+                emit setShekel(shekel - lvlprices[subSelected], false);
                 lvlprices[subSelected] = 0;
                 switch(subSelected) {
                 case 1:
@@ -120,9 +120,10 @@ void Shop::shopClicked(QRect pos)
             }
         }
         if(pos.intersects(buyRect) &&
-                towerPrices[subSelected-1] > 0) {
+                towerPrices[subSelected-1] > 0 &&
+                !towerLocks[subSelected-1]) {
             if(shekel >= towerPrices[subSelected-1]) {
-                shekel -= towerPrices[subSelected-1];
+                emit setShekel(shekel - towerPrices[subSelected-1]);
                 towerPrices[subSelected-1] = 0;
                 emit buyTower(subSelected-1);
             }
@@ -176,7 +177,7 @@ void Shop::shopClicked(QRect pos)
                 emit buyShekel(items[subSelected].name);
             } else {
                 if(shekel >= items[subSelected].price) {
-                    shekel -= items[subSelected].price;
+                    emit setShekel(shekel - items[subSelected].price, false);
                     items[subSelected].locked = false;
                     emit buyItem(subSelected);
                 }

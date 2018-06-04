@@ -66,6 +66,7 @@ public:
     int subSelected = 0;
     uint mainlvls;
     unsigned long long shekel = 100;
+    QString shekelSave = "111";
     void shopClicked(QRect pos);
     void drawShop(QPainter &painter);
     void drawPrice(QPainter &painter, QRect pos, uint price);
@@ -76,6 +77,7 @@ signals:
     void buyShekel(QString paket);
     void buyItem(int pos);
     void error_buy(int id);
+    void setShekel(unsigned long long shekel, bool save = true);
 
 public slots:
 };

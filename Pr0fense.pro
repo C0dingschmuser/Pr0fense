@@ -85,7 +85,8 @@ SOURCES += \
     targetdefinition.cpp \
     msgbox.cpp \
     account.cpp \
-    settings.cpp
+    settings.cpp \
+    dailyreward.cpp
 
 
 android: SOURCES += lockhelper.cpp
@@ -152,7 +153,8 @@ HEADERS += \
     targetdefinition.h \
     msgbox.h \
     account.h \
-    settings.h
+    settings.h \
+    dailyreward.h
 
 
 android: HEADERS += lockhelper.h

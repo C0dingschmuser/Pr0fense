@@ -21,16 +21,16 @@ ObjectPool::~ObjectPool()
     }
 }
 
-Projectile* ObjectPool::getProjectile()
+Projectile *ObjectPool::getProjectile()
 {
-    Projectile *p = NULL;
+    Projectile *p = nullptr;
     for(uint i=0;i<projectiles.size();i++) {
         if(!projectiles[i]->isUsed) {
             p = projectiles[i];
             break;
         }
     }
-    if(p==NULL) { //wenn kein freies gefunden
+    if(p == nullptr) { //wenn kein freies gefunden
        //mutex->lock();
         p = new Projectile();
         projectiles.push_back(p);

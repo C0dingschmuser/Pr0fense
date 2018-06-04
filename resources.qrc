@@ -140,5 +140,47 @@
         <file>data/images/ui/Datenschutz.png</file>
         <file>data/images/ui/Nutzungsbedingungen.png</file>
         <file>data/images/ui/speed3_popup.png</file>
+        <file>data/images/ui/stop2.png</file>
+        <file>data/images/ui/stop3.png</file>
+        <file>data/images/enemys/death/boss/BossBreak1.png</file>
+        <file>data/images/enemys/death/boss/BossBreak2.png</file>
+        <file>data/images/enemys/death/boss/BossBreak3.png</file>
+        <file>data/images/enemys/death/boss/BossBreak4.png</file>
+        <file>data/images/enemys/death/boss/BossBreak5.png</file>
+        <file>data/images/enemys/death/boss/BossBreak6.png</file>
+        <file>data/images/enemys/death/flying/AirBreak1.png</file>
+        <file>data/images/enemys/death/flying/AirBreak2.png</file>
+        <file>data/images/enemys/death/flying/AirBreak3.png</file>
+        <file>data/images/enemys/death/flying/AirBreak4.png</file>
+        <file>data/images/enemys/death/flying/AirBreak5.png</file>
+        <file>data/images/enemys/death/flying/AirBreak6.png</file>
+        <file>data/images/enemys/death/normal/Break1.png</file>
+        <file>data/images/enemys/death/normal/Break2.png</file>
+        <file>data/images/enemys/death/normal/Break3.png</file>
+        <file>data/images/enemys/death/normal/Break4.png</file>
+        <file>data/images/enemys/death/normal/Break5.png</file>
+        <file>data/images/enemys/death/normal/Break6.png</file>
+        <file>data/images/enemys/normal/Base1.png</file>
+        <file>data/images/enemys/normal/Base2.png</file>
+        <file>data/images/enemys/normal/Base3.png</file>
+        <file>data/images/enemys/normal/Base4.png</file>
+        <file>data/images/enemys/normal/Base5.png</file>
+        <file>data/images/enemys/normal/Base6.png</file>
+        <file>data/images/enemys/normal/Base7.png</file>
+        <file>data/images/enemys/normal/Base8.png</file>
+        <file>data/images/enemys/normal/Base9.png</file>
+        <file>data/images/enemys/flying/Air1.png</file>
+        <file>data/images/enemys/flying/Air2.png</file>
+        <file>data/images/enemys/flying/Air3.png</file>
+        <file>data/images/enemys/flying/Air4.png</file>
+        <file>data/images/enemys/flying/Air5.png</file>
+        <file>data/images/enemys/flying/Air6.png</file>
+        <file>data/images/enemys/flying/Air7.png</file>
+        <file>data/images/enemys/boss/Boss1.png</file>
+        <file>data/images/enemys/flying/Air8.png</file>
+        <file>data/images/enemys/flying/Air9.png</file>
+        <file>data/images/Bildlauf.png</file>
+        <file>data/images/DailyBonusBenis.png</file>
+        <file>data/images/ui/haken.png</file>
     </qresource>
 </RCC>

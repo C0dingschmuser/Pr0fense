@@ -7,7 +7,7 @@ Projectile::Projectile()
 
 void Projectile::update(bool full)
 {
-    if(full&&!type) {
+    if(full && !type) {
         double angle = this->angle;
         int newAngle = Engine::getAngle(crect().center(),target->rect().center());
         if(target->soonBanned&&steps>3) {
