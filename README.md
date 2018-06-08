@@ -22,11 +22,9 @@ Tippt bzw. klickt ihr auf ein Turmfeld wo sich bereits ein Turm befindet, öffne
 
 #### 2.1 Fortschrittssystem
 
-Ihr erhaltet alle 10 Wellen eine gewisse Anzahl an <img src="https://raw.githubusercontent.com/FireDiver/Pr0fense/master/data/images/shekel.png" width="50" height="25" /> mit denen ihr im Shop neue Karten, Türme und Items kaufen könnt. Alternativ könnt ihr auch die Entwicklung von Pr0fense unterstützen und diese mit In-App käufen kaufen
+Ihr erhaltet alle 10 Wellen eine gewisse Anzahl an <img src="https://raw.githubusercontent.com/FireDiver/Pr0fense/master/data/images/shekel.png" width="50" height="25" /> mit denen ihr im Shop neue Karten, Türme und Items kaufen könnt. Durch das kaufen von Maps schaltet ihr automatisch neue Türme frei. Alternativ könnt ihr auch die Entwicklung von Pr0fense unterstützen und diese mit In-App käufen kaufen.
 
-**Aber bei den Türmen sind doch nur ?-Zeichen. Wie schalte ich denn neue Türme frei?**
-
-Wenn ihr Maps kauft, schaltet ihr automatisch auch neue Türme frei.
+**Bitte bachtet, dass ihr auf eigenen Maps erst Shekel verdient wenn alle normalen Maps freigeschaltet sind!**
 
 #### 2.2 Mapeditor
 
@@ -46,3 +44,6 @@ Ihr könnt jeden Tag eine Belohnung erhalten, wenn ihr mindestens 10 Runden spie
 
 F: Wie kriegt man Shekel?  
 A: Siehe [Fortschrittssystem](https://github.com/FireDiver/Pr0fense/blob/master/README#L25)  
+
+F: Wie schaltet man Türme Frei?  
+A: Durch das kaufen von Maps
