@@ -140,7 +140,7 @@ void Projectile::free()
 
 QString Projectile::toString()
 {
-    return QString::number(rect.x()) + "," + QString::number(rect.y()) + "," + QString::number(rect.width()) + "," + QString::number(rect.height()) + "," +
+    return Engine::rectFToString(rect) + "," +
             QString::number(angle) + "," +
             QString::number(dmg) + "," +
             QString::number(stun) + "," +
@@ -157,7 +157,8 @@ QString Projectile::toString()
             QString::number(hasShekelImage) + "," +
             QString::number(color.red()) + "," + QString::number(color.green()) +
                 "," + QString::number(color.blue()) + "," + QString::number(color.alpha()) + "," +
-            QString::number(poisonDmg);
+            QString::number(poisonDmg) + "," +
+            Engine::rectFToString(targetRect);
 
 }
 

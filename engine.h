@@ -11,6 +11,13 @@
 class Engine
 {
 public:
+    static QString rectFToString(QRectF rect, QString sep = ",")
+    {
+        return QString(QString::number(rect.x()) + sep +
+                       QString::number(rect.y()) + sep +
+                       QString::number(rect.width()) + sep +
+                       QString::number(rect.height()));
+    }
     static double getAngle(QPointF p1, QPointF p2)
     {
         double theta = atan2(p2.y()-p1.y(),p2.x()-p1.x());
@@ -98,7 +105,7 @@ public:
         if(min==max) {
             randn = min;
         } else {
-            randn = rand() %(max-min) + min;
+            randn = qrand() %(max-min) + min;
         }
         return randn;
     }
@@ -109,6 +116,16 @@ public:
         if(diff > 180) diff -= 360;
         if(diff < -180) diff += 360;
         return std::fabs(diff);
+    }
+    static double numToBox2D(double num)
+    {
+        num /= 500;
+        return num;
+    }
+    static double numToNormal(double num)
+    {
+        num *= 500;
+        return num;
     }
     static QPolygonF getRauteFromRect(QRectF rect)
     {
@@ -135,6 +152,15 @@ public:
         font.setPixelSize(pixelSize);
         font.setBold(bold);
         painter.setFont(font);
+    }
+    static void drawButton(QPainter &painter, QRect rect, QString text, int size = 48, QColor color = QColor(Qt::white))
+    {
+        painter.setBrush(Qt::NoBrush);
+        painter.setPen(QPen(color,3));
+        painter.drawRect(rect);
+        QFont f = painter.font();
+        changeSize(f, painter, size, true);
+        painter.drawText(rect, Qt::AlignCenter, text);
     }
 private:
     Engine() {}

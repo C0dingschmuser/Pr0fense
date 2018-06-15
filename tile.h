@@ -3,6 +3,7 @@
 #include <QRectF>
 #include "Box2D/Box2D.h"
 #include "tower.h"
+#include "engine.h"
 
 class Tile
 {

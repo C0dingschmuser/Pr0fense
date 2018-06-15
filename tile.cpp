@@ -19,11 +19,11 @@ void Tile::initPhysics(b2World *world)
     int h = pos.height();
     b2BodyDef def;
     def.type = b2_staticBody;
-    def.position.Set(x+(w/2),y+(h/2));
+    def.position.Set(Engine::numToBox2D(x+(w/2)),Engine::numToBox2D(y+(h/2)));
     def.angle = 0;
     body = world->CreateBody(&def);
     b2PolygonShape boxShape;
-    boxShape.SetAsBox(w/2,h/2);
+    boxShape.SetAsBox(Engine::numToBox2D(w/2),Engine::numToBox2D(h/2));
     b2FixtureDef fixDef;
     fixDef.shape = &boxShape;
     fixDef.density = 2;

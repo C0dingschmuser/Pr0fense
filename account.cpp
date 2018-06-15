@@ -19,8 +19,8 @@ void Account::checkAccount(bool &statusConn)
     if(tmpSocket->state() == QTcpSocket::ConnectedState) {
         QString msg = ".3#" + username + "#~";
         tmpSocket->write(msg.toUtf8());
-        tmpSocket->waitForBytesWritten();
-        tmpSocket->waitForReadyRead();
+        tmpSocket->waitForBytesWritten(2500);
+        tmpSocket->waitForReadyRead(2500);
         QString response = tmpSocket->readAll();
         if(response.size()) {
             if(response.at(0) == "." && response.contains("~")) {

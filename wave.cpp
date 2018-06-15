@@ -114,7 +114,7 @@ void Wave::updateEnemysPerWave(bool fullTime, int mapWidth)
         wTime = time;
     }
     int rsp = 2;
-    if(waveCount) {
+    if(waveCount && wTime > 0) {
         rsp = waveCount+1 * (time / wTime);
         if(rsp < 1) rsp = 1;
     }

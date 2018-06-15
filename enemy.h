@@ -23,6 +23,7 @@ class Enemy
 public:
     Enemy();
     QRectF pos; //Koordinaten
+    QRectF oldpos;
     int stunned=0;
     int maxStun=0;
     bool isUsed = false;
@@ -60,6 +61,7 @@ public:
     void init(QRectF pos, double speed, int type, int cpos=0, int health=100, int path=0, int price=25);
     void initPhysics(b2World *world);
     void moveBy(double xv, double yv);
+    void moveTo(double x, double y);
     void setHealth(int health);
     void setSpeed(double speed);
     void setStun(int stunAmount);

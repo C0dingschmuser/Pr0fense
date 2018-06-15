@@ -1,14 +1,11 @@
 <RCC>
     <qresource prefix="/">
         <file>data/maps/map0.dat</file>
-        <file>data/images/path/path0.png</file>
-        <file>data/images/path/path1.png</file>
         <file>data/images/turmtile.png</file>
         <file>data/images/empty.png</file>
         <file>data/images/enemybase.png</file>
         <file>data/images/ownbase.png</file>
         <file>data/images/towers/base.png</file>
-        <file>data/images/towers/base2.png</file>
         <file>data/images/towers/minus.png</file>
         <file>data/images/ui/kaufen.png</file>
         <file>data/images/ui/zurueck.png</file>
@@ -37,14 +34,12 @@
         <file>data/images/ui/del.png</file>
         <file>data/images/eigene.png</file>
         <file>data/images/levels.png</file>
-        <file>data/images/community.png</file>
         <file>data/images/maps/map0.png</file>
         <file>data/images/maps/map1.png</file>
         <file>data/maps/map1.dat</file>
         <file>data/images/ui/weiterspielen.png</file>
         <file>data/images/towers/blus.png</file>
         <file>data/images/towers/blus_blurred.png</file>
-        <file>data/images/towers/repost.png</file>
         <file>data/images/towers/repost_mark.png</file>
         <file>data/images/towers/coin.png</file>
         <file>data/images/ui/herz.png</file>
@@ -109,13 +104,6 @@
         <file>data/images/ui/shop/tuerme/tower0.png</file>
         <file>data/images/schloss_quadrat.png</file>
         <file>data/images/ui/account_waiting.png</file>
-        <file>data/images/enemys/death/circle1.png</file>
-        <file>data/images/enemys/death/circle2.png</file>
-        <file>data/images/enemys/death/circle3.png</file>
-        <file>data/images/enemys/death/raute1.png</file>
-        <file>data/images/enemys/death/raute2.png</file>
-        <file>data/images/enemys/death/raute3.png</file>
-        <file>data/images/enemys/death/raute4.png</file>
         <file>data/images/ui/shop/Items.png</file>
         <file>data/images/ui/shop/items/item0.png</file>
         <file>data/images/qmark.png</file>
@@ -148,39 +136,34 @@
         <file>data/images/enemys/death/boss/BossBreak4.png</file>
         <file>data/images/enemys/death/boss/BossBreak5.png</file>
         <file>data/images/enemys/death/boss/BossBreak6.png</file>
-        <file>data/images/enemys/death/flying/AirBreak1.png</file>
-        <file>data/images/enemys/death/flying/AirBreak2.png</file>
-        <file>data/images/enemys/death/flying/AirBreak3.png</file>
-        <file>data/images/enemys/death/flying/AirBreak4.png</file>
-        <file>data/images/enemys/death/flying/AirBreak5.png</file>
-        <file>data/images/enemys/death/flying/AirBreak6.png</file>
         <file>data/images/enemys/death/normal/Break1.png</file>
         <file>data/images/enemys/death/normal/Break2.png</file>
         <file>data/images/enemys/death/normal/Break3.png</file>
         <file>data/images/enemys/death/normal/Break4.png</file>
         <file>data/images/enemys/death/normal/Break5.png</file>
         <file>data/images/enemys/death/normal/Break6.png</file>
-        <file>data/images/enemys/normal/Base1.png</file>
-        <file>data/images/enemys/normal/Base2.png</file>
-        <file>data/images/enemys/normal/Base3.png</file>
-        <file>data/images/enemys/normal/Base4.png</file>
-        <file>data/images/enemys/normal/Base5.png</file>
-        <file>data/images/enemys/normal/Base6.png</file>
-        <file>data/images/enemys/normal/Base7.png</file>
-        <file>data/images/enemys/normal/Base8.png</file>
-        <file>data/images/enemys/normal/Base9.png</file>
-        <file>data/images/enemys/flying/Air1.png</file>
-        <file>data/images/enemys/flying/Air2.png</file>
-        <file>data/images/enemys/flying/Air3.png</file>
-        <file>data/images/enemys/flying/Air4.png</file>
-        <file>data/images/enemys/flying/Air5.png</file>
-        <file>data/images/enemys/flying/Air6.png</file>
-        <file>data/images/enemys/flying/Air7.png</file>
-        <file>data/images/enemys/boss/Boss1.png</file>
-        <file>data/images/enemys/flying/Air8.png</file>
-        <file>data/images/enemys/flying/Air9.png</file>
         <file>data/images/Bildlauf.png</file>
         <file>data/images/DailyBonusBenis.png</file>
         <file>data/images/ui/haken.png</file>
+        <file>data/images/ui/deaktiviert/btnSell.png</file>
+        <file>data/images/path/path1.png</file>
+        <file>data/images/path/path2.png</file>
+        <file>data/images/path/path3.png</file>
+        <file>data/images/path/path4.png</file>
+        <file>data/images/path/path5.png</file>
+        <file>data/images/path/path6.png</file>
+        <file>data/images/path/path7.png</file>
+        <file>data/images/path/path8.png</file>
+        <file>data/images/path/path9.png</file>
+        <file>data/images/path/path10.png</file>
+        <file>data/images/path/path11.png</file>
+        <file>data/images/enemys/boss/Boss1.png</file>
+        <file>data/images/logo.png</file>
+        <file>data/images/effects/Blitz1.png</file>
+        <file>data/images/effects/Blitz2.png</file>
+        <file>data/images/effects/Blitz3.png</file>
+        <file>data/images/effects/Blitz4.png</file>
+        <file>data/images/repair.png</file>
+        <file>data/images/ui/deaktiviert/repair.png</file>
     </qresource>
 </RCC>
