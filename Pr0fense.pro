@@ -181,7 +181,8 @@ DISTFILES += \
 ANDROID_PACKAGE_SOURCE_DIR = $$PWD/android
 
 RESOURCES += \
-    resources.qrc
+    resources.qrc \
+    resources_enemy.qrc
 
 android: RESOURCES += music_ogg.qrc
 else:unix|win32: RESOURCES += music.qrc

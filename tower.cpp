@@ -67,7 +67,8 @@ QString Tower::toString()
             QString::number(price) + "," +
             QString::number(animation) + "," +
             QString::number(animationMax) + "," +
-            QString::number(disabled);
+            QString::number(disabled) + "," +
+            QString::number(disabledFlagged);
 
 }
 

@@ -38,6 +38,8 @@ public:
     int projectilePxID = 0;
     int currentReload = 0;
     bool isShooting = false;
+    bool sellingDisabled = false;
+    bool disabledFlagged = false;
     int animation = 0;
     int animationMax = 0;
     double pspeed = 0;

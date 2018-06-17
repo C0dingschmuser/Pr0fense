@@ -1,5 +1,12 @@
 # Pr0fense
 
+1. [Was ist Pr0fense](https://github.com/FireDiver/Pr0fense/blob/master/README.md#1-was-ist-pr0fense)  
+2. [Wie Funktioniert das](https://github.com/FireDiver/Pr0fense/blob/master/README.md#2-wie-funktioniert-das)   
+  2.1 [Fortschrittssystem](https://github.com/FireDiver/Pr0fense/blob/master/README.md#21-fortschrittssystem)  
+  2.2 [Mapeditor](https://github.com/FireDiver/Pr0fense/blob/master/README.md#22-mapeditor)  
+  2.3 [DailyBonusBenis](https://github.com/FireDiver/Pr0fense/blob/master/README.md#23-dailybonusbenis)
+3. [FAQ](https://github.com/FireDiver/Pr0fense/blob/master/README.md#3-faq)  
+
 ### 1. Was ist Pr0fense
 
 Ein Tower Defense Spiel im Stile der alten Klassiker, wer kennt sie nicht?
@@ -15,11 +22,9 @@ Tippt bzw. klickt ihr auf ein Turmfeld wo sich bereits ein Turm befindet, öffne
 
 #### 2.1 Fortschrittssystem
 
-Ihr erhaltet alle 10 Wellen eine gewisse Anzahl an <img src="https://raw.githubusercontent.com/FireDiver/Pr0fense/master/data/images/shekel.png" width="50" height="25" /> mit denen ihr im Shop neue Karten, Türme und Items kaufen könnt. Alternativ könnt ihr auch die Entwicklung von Pr0fense unterstützen und diese mit In-App käufen kaufen
+Ihr erhaltet alle 10 Wellen eine gewisse Anzahl an <img src="https://raw.githubusercontent.com/FireDiver/Pr0fense/master/data/images/shekel.png" width="50" height="25" /> mit denen ihr im Shop neue Karten, Türme und Items kaufen könnt. Durch das kaufen von Maps schaltet ihr automatisch neue Türme frei. Alternativ könnt ihr auch die Entwicklung von Pr0fense unterstützen und diese mit In-App käufen kaufen.
 
-**Aber bei den Türmen sind doch nur ?-Zeichen. Wie schalte ich denn neue Türme frei?**
-
-Wenn ihr Maps kauft, schaltet ihr automatisch auch neue Türme frei.
+**Bitte bachtet, dass ihr auf eigenen Maps erst Shekel verdient wenn alle normalen Maps freigeschaltet sind!**
 
 #### 2.2 Mapeditor
 
@@ -30,3 +35,15 @@ Mit dem Mapeditor könnt ihr eigene Karten erstellen. Unten Rechts seht ihr den 
 <img src="https://raw.githubusercontent.com/FireDiver/Pr0fense/master/data/images/ui/edit.png" width="25" height="25" /> **Editmodus** In diesem Modus könnt ihr Blöcke platzieren. Durchgehendes Platzieren ist möglich.
 
 Durch antippen des Symbols ändert ihr den Modus.
+
+#### 2.3 DailyBonusBenis
+
+Ihr könnt jeden Tag eine Belohnung erhalten, wenn ihr mindestens 10 Runden spielt. Je mehr Tage ihr nacheinander spielt, desto größer werden die Belohnungen. Das Fenster erscheint sobald ihr die 10 Runden gespielt habt und wieder im Hauptmenü seid. Wenn ihr einen oder mehrere Tage aussetzt wird der Bonus zurückgesetzt.
+
+### 3. FAQ
+
+F: Wie kriegt man Shekel?  
+A: Siehe [Fortschrittssystem](https://github.com/FireDiver/Pr0fense/blob/master/README#L25)  
+
+F: Wie schaltet man Türme Frei?  
+A: Durch das kaufen von Maps

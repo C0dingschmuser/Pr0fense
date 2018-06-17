@@ -31,24 +31,29 @@ void Enemy::initPhysics(b2World *world)
 {
     b2BodyDef BodyDef;
     BodyDef.type = b2_dynamicBody;
-    BodyDef.position.Set(pos.x(),pos.y());
+    BodyDef.position.Set(Engine::numToBox2D(pos.x()+(pos.width()/2)),Engine::numToBox2D(pos.y()+(pos.height()/2)));
     BodyDef.angle = 0;
     body = world->CreateBody(&BodyDef);
     b2CircleShape circleShape;
-    b2PolygonShape polyShape;
+    //b2PolygonShape polyShape;
     b2FixtureDef fixtureDef;
-    //if(type != 7) { //wenn nicht legende
+    //if(type == 7) { //wenn legende
         circleShape.m_p.Set(0,0);
-        circleShape.m_radius = pos.width() / 2;
+        circleShape.m_radius = Engine::numToBox2D(pos.width() / 2);
         fixtureDef.shape = &circleShape;
-    /*} else if( type == 7){
-        QPolygonF polygon = Engine::getRauteFromRect(pos);
+    /*} else {
         b2Vec2 array[4];
-        for(uint i = 0; i < 4; i++) {
-            array[i].Set(-(pos.x() + pos.width()/2) + polygon.at(i).x(), -(pos.y() + pos.height()/2) + polygon.at(i).y());
-        }
+        double x = Engine::numToBox2D(pos.x());
+        double y = Engine::numToBox2D(pos.y());
+        double w = Engine::numToBox2D(pos.width());
+        double h = Engine::numToBox2D(pos.height());
+        array[0].Set(-w/2,-h/2);
+        array[1].Set(w/2,-h/2);
+        array[2].Set(w/2,h/2);
+        array[3].Set(-w/2,h/2);
         polyShape.Set(array, 4);
-        fixtureDef.shape = &polyShape;
+         //polyShape.SetAsBox(Engine::numToBox2D(pos.width()/2), Engine::numToBox2D(pos.height()/2));
+         fixtureDef.shape = &polyShape;
     }*/
     fixtureDef.density = getDensity(type);
     fixtureDef.filter.categoryBits = ownCategoryBits;
@@ -60,11 +65,19 @@ void Enemy::initPhysics(b2World *world)
 
 void Enemy::moveBy(double xv, double yv)
 {
-    if(!physicsInitialized) return;
+    if(!physicsInitialized || body == nullptr) return;
     //qDebug()<<body->GetWorld()->IsLocked();
-    body->SetLinearVelocity(b2Vec2(xv*10,yv*10));
+    body->SetLinearVelocity(b2Vec2(xv*2,yv*2));
     updatePos();
     if(opacity<1) opacity += 0.0075;
+}
+
+void Enemy::moveTo(double x, double y)
+{
+    if(body != nullptr && physicsInitialized) {
+        body->SetTransform(b2Vec2(Engine::numToBox2D(x+pos.width()/2),Engine::numToBox2D(y+pos.height()/2)),0);
+        updatePos();
+    }
 }
 
 void Enemy::setHealth(int health)
@@ -125,7 +138,10 @@ void Enemy::free()
 void Enemy::updatePos()
 {
     if(!physicsInitialized||body==nullptr) return;
-    this->pos = QRectF(body->GetPosition().x-pos.width()/2,body->GetPosition().y-pos.height()/2,pos.width(),pos.height());
+    this->pos = QRectF(Engine::numToNormal(body->GetPosition().x)-(pos.width()/2),
+                       Engine::numToNormal(body->GetPosition().y)-(pos.height()/2),
+                       pos.width(),
+                       pos.height());
 }
 
 void Enemy::calcWidth()
@@ -193,7 +209,10 @@ QRect Enemy::rect()
     if(body==nullptr||!physicsInitialized) {
         return QRect(pos.x(),pos.y(),pos.width(),pos.height());
     }
-    return QRect(body->GetPosition().x-pos.width()/2,body->GetPosition().y-pos.height()/2,pos.width(),pos.height());
+    return QRect(Engine::numToNormal(body->GetPosition().x)-pos.width()/2,
+                 Engine::numToNormal(body->GetPosition().y)-pos.height()/2,
+                 pos.width(),
+                 pos.height());
 }
 
 QRectF Enemy::rectF(int a)
@@ -206,9 +225,15 @@ QRectF Enemy::rectF(int a)
         }
     } else {
         if(!a) {
-            return QRectF(body->GetPosition().x-pos.width()/2,body->GetPosition().y-pos.height()/2,pos.width(),pos.height());
+            return QRectF(Engine::numToNormal(body->GetPosition().x) - (pos.width()/2),
+                          Engine::numToNormal(body->GetPosition().y) - (pos.height()/2),
+                          pos.width(),
+                          pos.height());
         } else {
-            return QRectF(body->GetPosition().x,body->GetPosition().y,pos.width(),pos.height());
+            return QRectF(Engine::numToNormal(body->GetPosition().x),
+                          Engine::numToNormal(body->GetPosition().y),
+                          pos.width(),
+                          pos.height());
         }
     }
 }
@@ -222,7 +247,7 @@ QRectF Enemy::centerRect()
 
 QString Enemy::toString()
 {
-    pos = rectF(1);
+    pos = rectF();
     return QString::number(cpos) + "," +
             QString::number(dir) + "," +
             QString::number(health) + "," +

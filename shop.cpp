@@ -16,7 +16,7 @@ Shop::Shop(QObject *parent) : QObject(parent)
     shekelPrices.push_back(7.99);
     shekelPrices.push_back(14.99);
     shekelPrices.push_back(29.99);
-    shekelPrices.push_back(349.99);
+    shekelPrices.push_back(49.99);
 
     shekelPacks.push_back(50);
     shekelPacks.push_back(100);
@@ -25,7 +25,7 @@ Shop::Shop(QObject *parent) : QObject(parent)
     shekelPacks.push_back(1300);
     shekelPacks.push_back(2800);
     shekelPacks.push_back(6000);
-    shekelPacks.push_back(75000);
+    shekelPacks.push_back(15000);
 
     items.push_back(Item("speed_superfast", "Schaltet 3x Geschwindigkeit frei", 0.99, 0));
 
@@ -51,6 +51,20 @@ Shop::Shop(QObject *parent) : QObject(parent)
         }
         towerPositions.push_back(rect);
     }
+}
+
+void Shop::loadGraphics()
+{
+    mapsPx = QPixmap(":/data/images/ui/shop/maps.png");
+    shekelPx = QPixmap(":/data/images/ui/shop/shekel.png");
+    towerPx = QPixmap(":/data/images/ui/shop/tuerme.png");
+    itemPx = QPixmap(":/data/images/ui/shop/Items.png");
+    auswahlpx = QPixmap(":/data/images/auswahl_buy.png");
+    shekelMoney = QPixmap(":/data/images/shekel.png");
+    lockPx = QPixmap(":/data/images/schloss.png");
+    lock_quadratPx = QPixmap(":/data/images/schloss_quadrat.png");
+    shekelPlusPx = QPixmap(":/data/images/ui/shop/PlusButton.png");
+    sternPx = QPixmap(":/data/images/stern.png");
 }
 
 void Shop::shopClicked(QRect pos)
@@ -160,7 +174,7 @@ void Shop::shopClicked(QRect pos)
                 paket = "shekel_ultra";
                 break;
             case 7:
-                paket = "shekel_05";
+                paket = "shekel_super";
                 break;
             }
             emit buyShekel(paket);

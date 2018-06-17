@@ -32,16 +32,16 @@ class Shop : public QObject
 {
     Q_OBJECT
 private:
-    QPixmap mapsPx = QPixmap(":/data/images/ui/shop/maps.png");
-    QPixmap shekelPx = QPixmap(":/data/images/ui/shop/shekel.png");
-    QPixmap towerPx = QPixmap(":/data/images/ui/shop/tuerme.png");
-    QPixmap itemPx = QPixmap(":/data/images/ui/shop/Items.png");
-    QPixmap auswahlpx = QPixmap(":/data/images/auswahl_buy.png");
-    QPixmap shekelMoney = QPixmap(":/data/images/shekel.png");
-    QPixmap lockPx = QPixmap(":/data/images/schloss.png");
-    QPixmap lock_quadratPx = QPixmap(":/data/images/schloss_quadrat.png");
-    QPixmap shekelPlusPx = QPixmap(":/data/images/ui/shop/PlusButton.png");
-    QPixmap sternPx = QPixmap(":/data/images/stern.png");
+    QPixmap mapsPx;
+    QPixmap shekelPx;
+    QPixmap towerPx;
+    QPixmap itemPx;
+    QPixmap auswahlpx;
+    QPixmap shekelMoney;
+    QPixmap lockPx;
+    QPixmap lock_quadratPx;
+    QPixmap shekelPlusPx;
+    QPixmap sternPx;
     std::vector <QPixmap> towers;
     std::vector <QPixmap> shekelPacksPx;
     QRect buyRect = QRect(1525, 975, 325, 168);
@@ -67,6 +67,7 @@ public:
     uint mainlvls;
     unsigned long long shekel = 100;
     QString shekelSave = "111";
+    void loadGraphics();
     void shopClicked(QRect pos);
     void drawShop(QPainter &painter);
     void drawPrice(QPainter &painter, QRect pos, uint price);

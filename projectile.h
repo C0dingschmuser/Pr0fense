@@ -16,6 +16,7 @@ public:
     bool isUsed=false;
     void update(bool full = false);
     QRectF rect;
+    QRectF targetRect;
     int angle;
     double dmg;
     int stun;
