@@ -170,5 +170,16 @@
         <file>data/images/ui/settings/Niedrig.png</file>
         <file>data/images/ui/settings/checked.png</file>
         <file>data/images/ui/settings/unchecked.png</file>
+        <file>data/images/minusButton.png</file>
+        <file>data/images/ui/settings/buttons.png</file>
+        <file>data/images/ui/settings/normal.png</file>
+        <file>data/images/effects/art13/0.png</file>
+        <file>data/images/stats.png</file>
+        <file>data/images/effects/art13/1.png</file>
+        <file>data/images/effects/art13/2.png</file>
+        <file>data/images/effects/art13/3.png</file>
+        <file>data/images/effects/art13/4.png</file>
+        <file>data/images/effects/art13/5.png</file>
+        <file>data/names.dat</file>
     </qresource>
 </RCC>

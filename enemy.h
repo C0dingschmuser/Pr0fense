@@ -6,24 +6,13 @@
 #include "Box2D/Box2D.h"
 #include "engine.h"
 
-enum _enemyTypes {
-    ENEMY_FLIESE =        0,
-    ENEMY_NEUSCHWUCHTEL = 1,
-    ENEMY_SCHWUCHTEL =    2,
-    ENEMY_SPENDER =       3,
-    ENEMY_ALTSCHWUCHTEL = 4,
-    ENEMY_MOD =           5,
-    ENEMY_ADMIN =         6,
-    ENEMY_LEGENDE =       7,
-    ENEMY_GEBANNT =       8,
-};
-
 class Enemy
 {
 public:
     Enemy();
     QRectF pos; //Koordinaten
     QRectF oldpos;
+    QString name;
     int stunned=0;
     int maxStun=0;
     bool isUsed = false;

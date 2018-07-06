@@ -14,6 +14,8 @@ void Settings::loadGraphics()
     highPx = QPixmap(":/data/images/ui/settings/Hoch.png");
     uncheckedPx = QPixmap(":/data/images/ui/settings/unchecked.png");
     checkedPx = QPixmap(":/data/images/ui/settings/checked.png");
+    normalPx = QPixmap(":/data/images/ui/settings/normal.png");
+    buttonsPx = QPixmap(":/data/images/ui/settings/buttons.png");
 }
 
 void Settings::drawSettings(QPainter &painter)
@@ -46,6 +48,22 @@ void Settings::drawSettings(QPainter &painter)
     f.setPixelSize(32);
     painter.drawText(energieRect.x() + 125, energieRect.y() + 70, "Energiesparmodus (30FPS)");
 
+    f.setPixelSize(42);
+    painter.setFont(f);
+    painter.setPen(Qt::white);
+    painter.drawText(500, 675, "Zoom-Modus");
+
+    if(zoomMode == 1) {
+        painter.setOpacity(1);
+    } else painter.setOpacity(0.6);
+    painter.drawPixmap(buttonRect, buttonsPx);
+
+    if(!zoomMode) {
+        painter.setOpacity(1);
+    } else painter.setOpacity(0.6);
+    painter.drawPixmap(normalRect, normalPx);
+
+    painter.setOpacity(1);
     painter.drawPixmap(datenschutzRect, datenschutzPx);
     painter.drawPixmap(bedingungenRect, bedingungenPx);
     f.setPixelSize(32);
@@ -78,5 +96,15 @@ void Settings::settingsClicked(QRect pos)
         } else energieSparen = false;
         emit graphicsChanged(graphicQuality);
         emit energieSparenChanged(energieSparen);
+    } else if(pos.intersects(buttonRect)) {
+        if(zoomMode != 1) {
+            zoomMode = 1;
+            emit zoomChanged();
+        }
+    } else if(pos.intersects(normalRect)) {
+        if(zoomMode != 0) {
+            zoomMode = 0;
+            emit zoomChanged();
+        }
     }
 }

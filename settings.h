@@ -21,12 +21,16 @@ private:
     QPixmap highPx;
     QPixmap checkedPx;
     QPixmap uncheckedPx;
+    QPixmap normalPx;
+    QPixmap buttonsPx;
     QRect datenschutzRect = QRect(500,900,400,97);
     QRect bedingungenRect = QRect(950, 900, 491, 97);
     QRect lowRect = QRect(500, 400, 200, 100);
     QRect mediumRect = QRect(725, 400, 200, 100);
     QRect highRect = QRect(950, 400, 200, 100);
     QRect energieRect = QRect(500, 525, 100, 100);
+    QRect buttonRect = QRect(500, 700, 283, 64);
+    QRect normalRect = QRect(800, 700, 283, 64);
 
 public:
     explicit Settings(QObject *parent = nullptr);
@@ -36,6 +40,7 @@ public:
     int graphicQuality = GRAPHIC_HIGH;
 #endif
     bool energieSparen = false;
+    bool zoomMode = 0;
     void loadGraphics();
     void drawSettings(QPainter &painter);
     void settingsClicked(QRect pos);
@@ -44,6 +49,8 @@ signals:
     void openPage(int id);
     void graphicsChanged(int graphics);
     void energieSparenChanged(bool mode);
+    void zoomChanged();
+
 public slots:
 };
 

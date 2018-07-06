@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<manifest package="com.bruhgames.pr0fense" xmlns:android="http://schemas.android.com/apk/res/android" android:versionName="1.036" android:versionCode="37" android:installLocation="auto">
+<manifest package="com.bruhgames.pr0fense" xmlns:android="http://schemas.android.com/apk/res/android" android:versionName="1.037" android:versionCode="39" android:installLocation="auto">
     <application android:hardwareAccelerated="true" android:name="org.qtproject.qt5.android.bindings.QtApplication" android:label="-- %%INSERT_APP_NAME%% --" android:icon="@drawable/icon">
         <meta-data android:name="com.google.firebase.messaging.default_notification_color" android:resource="@color/orange"/>
         <activity android:configChanges="orientation|uiMode|screenLayout|screenSize|smallestScreenSize|layoutDirection|locale|fontScale|keyboard|keyboardHidden|navigation" android:name="org.qtproject.qt5.android.bindings.QtActivity" android:label="-- %%INSERT_APP_NAME%% --" android:screenOrientation="landscape" android:launchMode="singleTop">

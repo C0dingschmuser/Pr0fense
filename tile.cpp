@@ -5,6 +5,11 @@ Tile::Tile()
 
 }
 
+Tile::~Tile()
+{
+
+}
+
 QRect Tile::rect()
 {
     return QRect(pos.x(),pos.y(),pos.width(),pos.height());
@@ -27,5 +32,6 @@ void Tile::initPhysics(b2World *world)
     b2FixtureDef fixDef;
     fixDef.shape = &boxShape;
     fixDef.density = 2;
+    fixDef.filter.categoryBits = boxType;
     body->CreateFixture(&fixDef);
 }

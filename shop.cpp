@@ -28,6 +28,9 @@ Shop::Shop(QObject *parent) : QObject(parent)
     shekelPacks.push_back(15000);
 
     items.push_back(Item("speed_superfast", "Schaltet 3x Geschwindigkeit frei", 0.99, 0));
+    items.push_back(Item("art13", "Temporärer Uploadfilter", 250, 1, true));
+    items[1].locked = false;
+
 
     int y = 0;
     int a = 0;
@@ -65,6 +68,7 @@ void Shop::loadGraphics()
     lock_quadratPx = QPixmap(":/data/images/schloss_quadrat.png");
     shekelPlusPx = QPixmap(":/data/images/ui/shop/PlusButton.png");
     sternPx = QPixmap(":/data/images/stern.png");
+    items[1].image = QPixmap(":/data/images/effects/art13/0.png");
 }
 
 void Shop::shopClicked(QRect pos)
@@ -186,13 +190,14 @@ void Shop::shopClicked(QRect pos)
                 subSelected = i;
             }
         }
-        if(pos.intersects(buyRect) && items[subSelected].locked) {
+        if(pos.intersects(buyRect) && (items[subSelected].locked || items[subSelected].hasCount)) {
             if(items[subSelected].name.contains("_")) { //InApp
                 emit buyShekel(items[subSelected].name);
             } else {
                 if(shekel >= items[subSelected].price) {
                     emit setShekel(shekel - items[subSelected].price, false);
                     items[subSelected].locked = false;
+                    if(items[subSelected].hasCount) items[subSelected].count++;
                     emit buyItem(subSelected);
                 }
             }
@@ -251,7 +256,12 @@ void Shop::drawShop(QPainter &painter)
                     }
                 }
             } else { //tower gesperrt
+                painter.setPen(Qt::white);
                 painter.drawPixmap(towerPositions[i-1], towers[0]);
+                Engine::changeSize(f, painter, 38, false);
+                painter.drawText(infoRect, Qt::AlignLeft, "Info: Falls du nicht weißt wie du Türme freischaltest,\n"
+                                                            "findest du beim ? unter 'Fortschrittssystem' Hilfe");
+                painter.setPen(Qt::NoPen);
             }
         }
         //painter.setBrush(Qt::red);
@@ -267,7 +277,8 @@ void Shop::drawShop(QPainter &painter)
                 painter.setPen(Qt::white);
                 Engine::changeSize(f, painter, 38, true);
                 painter.drawText(QRect(buyRect.x() - 290, buyRect.y()+15, buyRect.width() + 600, buyRect.height()),
-                                 Qt::AlignLeft, " "+QString::number(shekelPacks[i]) + " Shekel Für "+QString::number(shekelPrices[i],'f',2)+"€ kaufen");
+                                 Qt::AlignLeft, " "+QString::number(shekelPacks[i]) +
+                                 " Shekel Für "+QString::number(shekelPrices[i],'f',2)+"€ kaufen");
                 painter.setPen(Qt::NoPen);
                 painter.drawPixmap(buyRect.x() - 315, buyRect.y() - 5, 650, 85, auswahlpx);
             }
@@ -288,8 +299,10 @@ void Shop::drawShop(QPainter &painter)
                                          75),
                                    sternPx);
             }
-            if(items[i].locked) {
-                painter.drawPixmap(towerPositions[i], lock_quadratPx);
+            if(items[i].locked || items[i].hasCount) {
+                if(items[i].locked) {
+                    painter.drawPixmap(towerPositions[i], lock_quadratPx);
+                }
                 painter.setOpacity(1);
                 if(i == subSelected) {
                     painter.drawPixmap(buyRect.x() - 65, buyRect.y() - 5, 365, 85, auswahlpx);
@@ -297,20 +310,42 @@ void Shop::drawShop(QPainter &painter)
                     f.setBold(true);
                     painter.setFont(f);
                     painter.setPen(Qt::white);
-                    painter.drawText(QRect(buyRect.x() - 50,
-                                           buyRect.y() + 10,
-                                           buyRect.width()+100,
-                                           75),
-                                     Qt::AlignLeft,
-                                     "Kaufen ("+QString::number(items[i].price,'f',2)+" €)");
+                    if(items[i].locked) {
+                        painter.drawText(QRect(buyRect.x() - 50,
+                                               buyRect.y() + 10,
+                                               buyRect.width()+100,
+                                               75),
+                                         Qt::AlignLeft,
+                                         "Kaufen ("+QString::number(items[i].price,'f',2)+" €)");
+                    } else if(items[i].hasCount) {
+                        f.setPixelSize(32);
+                        f.setBold(true);
+                        painter.setFont(f);
+                        painter.drawText(QRect(buyRect.x() - 65,
+                                               buyRect.y() - 5,
+                                               365,
+                                               85),
+                                         Qt::AlignCenter,
+                                         "Kaufen ("+QString::number(items[i].price,'f',0)+" Shekel)");
+                    }
                     painter.setPen(Qt::NoPen);
                 }
+
+                if(items[i].hasCount) {
+                    f.setPixelSize(38);
+                    f.setBold(true);
+                    painter.setFont(f);
+                    painter.setPen(Qt::white);
+                    painter.drawText(towerPositions[i], Qt::AlignBottom | Qt::AlignCenter, "x"+QString::number(items[i].count));
+                }
+
             }
 
         }
         break;
     }
     painter.setOpacity(1);
+    painter.setPen(Qt::NoPen);
 }
 
 void Shop::drawPrice(QPainter &painter, QRect pos, uint price)

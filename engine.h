@@ -6,11 +6,61 @@
 #include <QPolygonF>
 #include <QElapsedTimer>
 #include <QFont>
+#include <QColor>
+#include <QDateTime>
 #include <QPainter>
+
+enum _enemyTypes {
+    ENEMY_FLIESE =        0,
+    ENEMY_NEUSCHWUCHTEL = 1,
+    ENEMY_SCHWUCHTEL =    2,
+    ENEMY_SPENDER =       3,
+    ENEMY_ALTSCHWUCHTEL = 4,
+    ENEMY_MOD =           5,
+    ENEMY_ADMIN =         6,
+    ENEMY_LEGENDE =       7,
+    ENEMY_GEBANNT =       8,
+};
 
 class Engine
 {
 public:
+    static QColor getColor(int type)
+    {
+        QColor color;
+        switch(type) {
+        case ENEMY_FLIESE:
+            color = QColor(108,67,43);
+            break;
+        case ENEMY_NEUSCHWUCHTEL:
+            color = QColor(225,8,233);
+            break;
+        case ENEMY_SCHWUCHTEL:
+            color = QColor(Qt::white);
+            break;
+        case ENEMY_SPENDER:
+            color = QColor(28,185,146);
+            break;
+        case ENEMY_ALTSCHWUCHTEL:
+            color = QColor(91,185,28);
+            break;
+        case ENEMY_MOD:
+            color = QColor(0,143,255);
+            break;
+        case ENEMY_ADMIN:
+            color = QColor(255,153,0);
+            break;
+        case ENEMY_LEGENDE:
+            color = QColor(28,185,146);
+            break;
+        case ENEMY_GEBANNT:
+            color = QColor(68,68,68);
+            break;
+        default:
+            color = QColor(22,22,24);
+        }
+        return color;
+    }
     static QString rectFToString(QRectF rect, QString sep = ",")
     {
         return QString(QString::number(rect.x()) + sep +
@@ -161,6 +211,41 @@ public:
         QFont f = painter.font();
         changeSize(f, painter, size, true);
         painter.drawText(rect, Qt::AlignCenter, text);
+    }
+    static QString toShortString(unsigned long long amount)
+    {
+        QString result = QString::number(amount);
+        if(amount > 999) {
+            if(amount < 999999) {
+                result = QString::number(amount/1000.0,'f',2);
+                result.remove( QRegExp("0+$") );
+                result.remove( QRegExp("\\.$") );
+                result += "k";
+            } else if(amount < 99999999) {
+                result = QString::number(amount/1000000.0,'f',2);
+                result.remove( QRegExp("0+$") );
+                result.remove( QRegExp("\\.$") );
+                result += "m";
+            } else if(amount < 999999999999){
+                result = QString::number(amount/1000000000.0,'f',2);
+                result.remove( QRegExp("0+$") );
+                result.remove( QRegExp("\\.$") );
+                result += "mrd";
+            } else {
+                result = QString::number(amount/1000000000000.0,'f',2);
+                result.remove( QRegExp("0+$") );
+                result.remove( QRegExp("\\.$") );
+                result += "b";
+            }
+        }
+        return result;
+    }
+    static QString toTimeString(unsigned long long seconds)
+    {
+        QString result = QDateTime::fromTime_t(seconds).toUTC().toString("hh:mm:ss");
+        QStringList split = result.split(":");
+        result = split[0] + "h " + split[1] + "m " + split[2] + "s";
+        return result;
     }
 private:
     Engine() {}

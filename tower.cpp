@@ -8,6 +8,10 @@ Tower::Tower()
 void Tower::addTargetDef(int target, int efficiency)
 {
     targetTypes.push_back(TargetDefinition(target,efficiency));
+    QRect tmp = this->pos.toRect();
+    tmp.moveTo(tmp.x()+40, tmp.y()-40);
+    tmp.adjust(20, 20, -20, -20);
+    upgradePos = tmp;
 }
 
 bool Tower::isTargetValid(int target)
@@ -70,6 +74,67 @@ QString Tower::toString()
             QString::number(disabled) + "," +
             QString::number(disabledFlagged);
 
+}
+
+int Tower::calcFullUpgradeCost(double upgradeHighConst, double upgradeLowConst, int type, int lvl)
+{
+    int cost = 0;
+
+    switch(type) {
+    case 0: //full
+        if(hasDamage) {
+            for(int tmpDmgLvl = dmglvl; tmpDmgLvl < 3; tmpDmgLvl++) {
+                cost += calcFullUpgradeCost(upgradeHighConst, upgradeLowConst, 1, tmpDmgLvl);
+            }
+        }
+
+        if(hasRange) {
+            for(int tmpRangeLvl = rangelvl; tmpRangeLvl < 3; tmpRangeLvl++) {
+                cost += calcFullUpgradeCost(upgradeHighConst, upgradeLowConst, 2, tmpRangeLvl);
+            }
+        }
+
+        if(hasFirerate) {
+            for(int tmpRateLvl = ratelvl; tmpRateLvl < 3; tmpRateLvl++) {
+                cost += calcFullUpgradeCost(upgradeHighConst, upgradeLowConst, 3, tmpRateLvl);
+            }
+        }
+
+        if(hasProjectileSpeed) {
+            for(int tmpSpeedLvl = speedlvl; tmpSpeedLvl < 3; tmpSpeedLvl++) {
+                cost += calcFullUpgradeCost(upgradeHighConst, upgradeLowConst, 4, tmpSpeedLvl);
+            }
+        }
+
+        if(hasTurnSpeed) {
+            for(int tmpTurnLvl = turnlvl; tmpTurnLvl < 3; tmpTurnLvl++) {
+                cost += calcFullUpgradeCost(upgradeHighConst, upgradeLowConst, 5, tmpTurnLvl);
+            }
+        }
+
+        break;
+    case 1: //dmg
+        if(!lvl) lvl = dmglvl;
+        cost = (price * upgradeHighConst) * (lvl+1);
+        break;
+    case 2: //range
+        if(!lvl) lvl = rangelvl;
+        cost = (price * upgradeLowConst) * (lvl+1);
+        break;
+    case 3: //feuerrate
+        if(!lvl) lvl = ratelvl;
+        cost = (price * upgradeHighConst) * (lvl+1);
+        break;
+    case 4: //speed
+        if(!lvl) lvl = speedlvl;
+        cost = (price * upgradeLowConst) * (lvl+1);
+        break;
+    case 5: //turnspeed
+        if(!lvl) lvl = turnlvl;
+        cost = (price * upgradeHighConst) * (lvl+1);
+        break;
+    }
+    return cost;
 }
 
 QString Tower::getInfo(int type, int pos, bool rem)

@@ -14,11 +14,12 @@ class Item
 {
 public:
     Item() {}
-    Item(QString name, QString description, double price, int num)
+    Item(QString name, QString description, double price, int num, bool hasCount = false)
     {
         this->name = name;
         this->description = description;
         this->price = price;
+        this->hasCount = hasCount;
         image = QPixmap(":/data/images/ui/shop/items/item"+QString::number(num)+".png");
     }
     QString name;
@@ -26,6 +27,8 @@ public:
     QPixmap image;
     double price;
     bool locked = true;
+    bool hasCount = false;
+    int count = 0;
 };
 
 class Shop : public QObject
@@ -42,6 +45,7 @@ private:
     QPixmap lock_quadratPx;
     QPixmap shekelPlusPx;
     QPixmap sternPx;
+    QPixmap wandPx;
     std::vector <QPixmap> towers;
     std::vector <QPixmap> shekelPacksPx;
     QRect buyRect = QRect(1525, 975, 325, 168);

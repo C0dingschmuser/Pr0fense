@@ -41,6 +41,7 @@
 #include "account.h"
 #include "settings.h"
 #include "dailyreward.h"
+#include "statistics.h"
 #ifdef Q_OS_ANDROID
 #include "lockhelper.h"
 #endif
@@ -48,12 +49,6 @@
 namespace Ui {
 class FrmMain;
 }
-
-enum _entityCategory {
-    BOUNDARY =      0x0001,
-    NORMAL_ENEMY =  0x0002,
-    FLYING_ENEMY =  0x0004,
-};
 
 //EnemyType Enums in enemy.h definiert
 
@@ -99,9 +94,10 @@ private:
     KeepAwakeHelper helper; //verhindert, dass app in standby geht
 #endif
     Shop *shop;
-    constexpr static const double version = 1.036;
+    Statistics *statistics;
+    constexpr static const double version = 1.037;
     const int disabledTime = 4000;
-    int newestPost = 2585466;
+    int newestPost = 2607304;
     int connectionTries = 0;
     Account account;
     Settings *settings;
@@ -158,6 +154,7 @@ private:
     Tile *chosenTile = NULL;
     std::vector <Path> paths;
     std::vector <QString> spruch;
+    std::vector <QString> bossNames;
     std::vector <QPixmap> pathTextures;
     std::vector <QPixmap> lvlPreviews;
     std::vector <QRect> mainLvlRects;
@@ -174,6 +171,8 @@ private:
     std::vector <QPixmap> bossEnemyDeath;
     std::vector <QPixmap> normalEnemys;
     std::vector <QPixmap> blitzAnimation;
+    std::vector <QPixmap> wandAnimation;
+    std::vector <int> chosenTiles;
     QPixmap pr0fensePx = QPixmap(":/data/images/logo.png");
     QPixmap repairPx;
     QPixmap repairPx_grau;
@@ -253,6 +252,8 @@ private:
     QPixmap settingsPx;
     QPixmap questionPx;
     QPixmap popupPx;
+    QPixmap minusButtonPx;
+    QPixmap statsPx;
     //Playmenu
     QPixmap levelsPx;
     QPixmap ownMapsPx;
@@ -267,17 +268,6 @@ private:
     QPixmap mEditPx;
     QPixmap mapPx;
     QPixmap mapPx_gras;
-    //<Farben>
-    QColor grau = QColor(22,22,24);
-    QColor gebannt = QColor(68,68,68);
-    QColor fliese = QColor(108,67,43);
-    QColor neuschwuchtel = QColor(225,8,233);
-    QColor schwuchtel = QColor(Qt::white);
-    QColor edlerSpender = QColor(28,185,146);
-    QColor altschwuchtel = QColor(91,185,28);
-    QColor mod = QColor(0,143,255);
-    QColor admin = QColor(255,153,0);
-    QColor legende = QColor(28,185,146);
     //</Farben>
     //<Standard>
     double zoomScale = 0;
@@ -314,7 +304,7 @@ private:
     bool cloudSaving = true;
     bool gameLoading = true;
     int begin = -1;
-    QPoint mPos;
+    QPointF mPos;
     QPointF mid;
     int zooming = 0;
     bool pressed = false;
@@ -337,6 +327,7 @@ private:
     int towerMenuAnimating = -1;
     int towerMenu = -1;
     int towerMenuSelected = 0;
+    int powerupSelected = -1;
     int delAll = 0;
     double fade = 1;
     double blendRectOpacity = 0;
@@ -366,6 +357,9 @@ private:
     QRect btnSpeedRect = QRect(305,545,285,85);
     QRect btnSellRect = QRect(10,640,285,85);
     QRect btnTurnRect = QRect(305,640,285,85);
+    QRect btnZoomPlusRect = QRect(1825, 425, 75, 75);
+    QRect btnZoomMinusRect = QRect(1825, 550, 75, 75);
+    QRect wandRect = QRect(50, 930, 100, 100);
     //Hauptmenü
     QRect startRect = QRect(50,500,400,89);
     QRect editRect = QRect(50,600,400,89);
@@ -374,8 +368,9 @@ private:
     QRect shekelRect = QRect(50, 330, 100, 50);
     QRect shekelPlusRect = QRect(400, 335, 50, 50);
     QRect accountRect = QRect(50, 900, 100, 100);
-    QRect settingsRect = QRect(200, 900, 100, 100);
-    QRect questionRect = QRect(350, 900, 100, 100);
+    QRect statsRect = QRect(150, 900, 100, 100);
+    QRect questionRect = QRect(250, 900, 100, 100);
+    QRect settingsRect = QRect(350, 900, 100, 100);
     QRect popupRect = QRect(350,200,1280,720);
     //283 x 413
     QRect btnContinueRect = QRect(677,413,566,127);
@@ -412,6 +407,10 @@ private:
     bool basehplocked = false;
     bool waveCountLocked = false;
     bool superfastUnlocked = false;
+    int isZooming = false;
+    int zoomTime = 0;
+    int maxZoomTime = 0;
+    double zoomAmount = 0;
     int editorSelected = 0;
     int playingSpeed = 1;
     int mCompileError = -1;
@@ -448,8 +447,9 @@ private:
     void initPhysics();
     void restore(int amount);
     void addTowerTargets(Tower *t);
-    void setShekel(unsigned long long amount, bool save = true);
-    void setBenis(unsigned long long amount);
+    void upgradeDmg(Tower *tmpTower);
+    void setShekel(unsigned long long amount, bool save = true, bool loading = false);
+    void setBenis(unsigned long long amount, bool loading = false);
     void setBaseHp(int amount);
     void setWaveCount(int amount);
     void shake(int duration, double shakeIX, double shakeIY);
@@ -490,23 +490,25 @@ private:
     void loadItems();
     void changePlaylist(int playlist);
     int createPath();
+    void zoom(double amount);
     void createPathBoundaries();
     void loginAccount();
     void createAccount();
     void saveAccount();
     void accountCreationError();
     void changeSize(QPainter &painter, int pixelSize, bool bold = false);
-    void buyMinusTower();
-    void buyFavTower();
-    void buyRepostTower();
-    void buyBenisTower();
-    void buyBanTower();
-    void buySniperTower();
-    void buyFlakTower();
-    void buyLaserTower();
-    void buyPoisonTower();
-    void buyMinigunTower();
+    void buyMinusTower(int tpos);
+    void buyFavTower(int tpos);
+    void buyRepostTower(int tpos);
+    void buyBenisTower(int tpos);
+    void buyBanTower(int tpos);
+    void buySniperTower(int tpos);
+    void buyFlakTower(int tpos);
+    void buyLaserTower(int tpos);
+    void buyPoisonTower(int tpos);
+    void buyMinigunTower(int tpos);
     void buyShekelAnimation(int amount, int price);
+    void placeWall(QPointF pos);
     void delEnemy(int pos);
     void delTower(Tower *t);
     void reset(int custom = 0);
@@ -562,6 +564,7 @@ private slots:
     void on_addBonus(int amount);
     void on_graphicsChanged(int graphic);
     void on_energieSparenChanged(bool mode);
+    void on_zoomChanged();
 
 protected:
     bool event(QEvent *e) override;

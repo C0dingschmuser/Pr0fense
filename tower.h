@@ -23,6 +23,7 @@ class Tower
 public:
     Tower();
     QRectF pos;
+    QRect upgradePos;
     bool hasDamage = true;
     bool hasRange = true;
     bool hasFirerate = true;
@@ -48,6 +49,8 @@ public:
     int stun = 0;
     int repost = 0;
     int range = 0;
+    int tmpRange = 0;
+    int tmpRangeDir = 2;
     int price = 0;
     int dmglvl = 1;
     int ratelvl = 1;
@@ -67,6 +70,7 @@ public:
     QString name;
     QRect rect();
     QString toString();
+    int calcFullUpgradeCost(double upgradeHighConst, double upgradeLowConst, int type = 0, int lvl = 0);
     static QString getInfo(int type, int pos, bool rem = false);
 };
 

@@ -5,13 +5,23 @@
 #include "tower.h"
 #include "engine.h"
 
+enum _entityCategory {
+    BOUNDARY =      0x0001,
+    NORMAL_ENEMY =  0x0002,
+    FLYING_ENEMY =  0x0004,
+    WALL =          0x0005,
+};
+
 class Tile
 {
 public:
     Tile();
+    ~Tile();
     QRectF pos;
     b2Body *body = nullptr;
+    uint16_t boxType = BOUNDARY;
     int type;
+    int wallTime = 0;
     Tower *t = nullptr;
     int towernum = -1;
     int ran = 0;
