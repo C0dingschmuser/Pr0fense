@@ -17,7 +17,7 @@ QRect Tile::rect()
 
 void Tile::initPhysics(b2World *world)
 {
-    if(type==1||type==4||type==5) return;
+    if(type==4||type==5) return;
     int x = pos.x();
     int y = pos.y();
     int w = pos.width();

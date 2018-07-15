@@ -12,6 +12,17 @@ enum _entityCategory {
     WALL =          0x0005,
 };
 
+enum _tileType {
+    TILE_PATH = 1,
+    TILE_TOWER = 2,
+    TILE_EMPTY = 3,
+    TILE_SPAWN = 4,
+    TILE_BASE = 5,
+    TILE_GRAS = 6,
+    TILE_ART13 = 7,
+    TILE_WAYP = 100,
+};
+
 class Tile
 {
 public:

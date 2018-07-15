@@ -4592,5 +4592,8 @@
         <file>data/images/enemys/normal/4592.jpg</file>
         <file>data/images/enemys/normal/4593.jpg</file>
         <file>data/images/enemys/normal/4594.jpg</file>
+        <file>data/images/enemys/normal/782.jpg</file>
+        <file>data/images/enemys/normal/677.jpg</file>
+        <file>data/images/enemys/normal/556.jpg</file>
     </qresource>
 </RCC>

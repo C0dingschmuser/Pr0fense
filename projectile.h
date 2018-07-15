@@ -18,7 +18,7 @@ public:
     QRectF rect;
     QRectF targetRect;
     int angle;
-    double dmg;
+    double dmg = 0;
     int stun;
     int repost;
     int type = 0;

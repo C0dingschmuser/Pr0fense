@@ -28,6 +28,10 @@
 #include <QClipboard>
 #include <QSettings>
 #include <QFutureWatcher>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QNetworkRequest>
+#include <queue>
 #include "Box2D/Box2D.h"
 #include "tower.h"
 #include "objectpool.h"
@@ -42,6 +46,8 @@
 #include "settings.h"
 #include "dailyreward.h"
 #include "statistics.h"
+#include "astar/astar.h"
+#include "astar/fixinclude.h"
 #ifdef Q_OS_ANDROID
 #include "lockhelper.h"
 #endif
@@ -95,18 +101,20 @@ private:
 #endif
     Shop *shop;
     Statistics *statistics;
-    constexpr static const double version = 1.037;
+    constexpr static const double version = 1.038;
     const int disabledTime = 4000;
-    int newestPost = 2607304;
+    int newestPost = 2636109;
+    int playingMode = MODE_NORMAL;
     int connectionTries = 0;
     Account account;
+    AStar astar;
     Settings *settings;
     DailyReward *dailyReward;
-    QFutureWatcher <void> watcher;
-    int futureID = 0;
     bool newPost = false;
     b2World *world=nullptr;
     b2Body *wall1=nullptr,*wall2=nullptr,*wall3=nullptr,*wall4=nullptr;
+    QNetworkAccessManager *manager;
+    QNetworkReply *nreply = nullptr;
     QMediaPlayer *music;
     QMediaPlaylist *playlist_game;
     QMediaPlaylist *playlist_menu;
@@ -157,6 +165,7 @@ private:
     std::vector <QString> bossNames;
     std::vector <QPixmap> pathTextures;
     std::vector <QPixmap> lvlPreviews;
+    std::vector <QPixmap> mazelvlPreviews;
     std::vector <QRect> mainLvlRects;
     std::vector <Level> levels;
     std::vector <uint> lvlPrices;
@@ -173,7 +182,11 @@ private:
     std::vector <QPixmap> blitzAnimation;
     std::vector <QPixmap> wandAnimation;
     std::vector <int> chosenTiles;
+    std::vector <int> waypoints;
+    Path tempPath;
     QPixmap pr0fensePx = QPixmap(":/data/images/logo.png");
+    QPixmap playingModeNormal;
+    QPixmap playingModeMaze;
     QPixmap repairPx;
     QPixmap repairPx_grau;
     QPixmap bossPx;
@@ -254,6 +267,9 @@ private:
     QPixmap popupPx;
     QPixmap minusButtonPx;
     QPixmap statsPx;
+    QPixmap towerMenuClosePx;
+    QPixmap towerMenuOpenPx;
+    QPixmap waveBreakPx;
     //Playmenu
     QPixmap levelsPx;
     QPixmap ownMapsPx;
@@ -272,7 +288,7 @@ private:
     //<Standard>
     double zoomScale = 0;
     const uint minusTowerCost = 50, herzTowerCost = 75, repostTowerCost = 150, benisTowerCost = 200,
-        banTowerCost = 250, sniperTowerCost = 350, flakTowerCost = 100, laserTowerCost = 300,
+        banTowerCost = 2000, sniperTowerCost = 350, flakTowerCost = 100, laserTowerCost = 300,
         poisonTowerCost = 500, minigunTowerCost = 400;
     const double upgradeHighConst = 0.75, upgradeLowConst = 0.5;
     int shaking = 0;
@@ -281,11 +297,15 @@ private:
     double shakeX = 0, shakeY=0, shakeIntensityX = 2, shakeIntensityY = 2;
     QFont f = QFont("Arial");
     /*Active-States
+   -1 - Suspended
     0 - Hauptmenü
     1 - Ingame
     2 - Mapeditor*/
-    bool userDataLoaded = false;
     int active = STATE_SUSPENDED;
+
+    bool userDataLoaded = false;
+    bool towerMenuHidden = false;
+
     uint upgradeCost = 0;
     int subActive = 0;
     uint subActiveSelected = 0;
@@ -311,6 +331,7 @@ private:
     bool backMenu = false;
     bool physicsPaused = false;
     bool isLoading();
+    bool pathsContains(int num);
     void startRandomTile();
     bool spawnTiles = false;
     bool closing = false;
@@ -324,6 +345,7 @@ private:
     bool mapLoaded = false;
     bool resetPos = false;
     bool towerMenuAnimatingDir = 0;
+    bool enemyWarning = false;
     int towerMenuAnimating = -1;
     int towerMenu = -1;
     int towerMenuSelected = 0;
@@ -334,12 +356,15 @@ private:
     int fdir = 0;
     int towerPxSize = 512;
     QRectF target;
+    QRect playingModeRect = QRect(1604, 400, 168, 168);
     QRect okButtonRect = QRect(585,900,200,100);
     QRect dsButtonRect = QRect(835,900,200,100);
     QRect nbButtonRect = QRect(1085,900,200,100);
     QRectF pr0coinRect = QRectF(0,0,100,100);
     QRect repairButtonRect = QRect(200,565,200,200);
     QRect towerMenuRect = QRect(0,150,600,930);
+    QRect towerMenuCloseRect = QRect(550,100,100,100);
+    QRect towerMenuOpenRect = QRect(0,465,150,150);
     QRect towerMenuRectAnimation = QRect(-600,150,500,930);
     QRect minusTowerRect = QRect(50,200,150,150);
     QRect favTowerRect = QRect(225,200,150,150);
@@ -387,6 +412,7 @@ private:
     int enemyBaseCount = 0;
     int ownBaseCount = 0;
     int waveCount;
+    int waveBreak = 0;
     QString waveCountSave;
     int internalWaveCount;
     int chosenpath = 0;
@@ -420,6 +446,7 @@ private:
     QRect mBaseRect = QRect(925,850,150,150);
     QRect mEnemyBaseRect = QRect(700,850,150,150);
     QRect mClearRect = QRect(1150,850,150,150);
+    QRect mWaypointRect = QRect(1375,850,150,150);
     QRect mPlayRect = QRect(25,25,150,150);
     QRect mSaveRect = QRect(1695,25,150,150);
     QRect menuPlayRect = QRect(1545,900,150,150);
@@ -431,10 +458,10 @@ private:
     bool suspended = false;
     bool loaded = false;
     bool error=false;
-    bool statusConn = false;
     int appState = Qt::ApplicationActive;
     const double NANO_TO_MILLI = 1000000.0;
     const uint mainLevels = 4;
+    const uint mazeLevels = 4;
     double tmainMS = 0;
     double tdrawMS = 0;
     double twavespeedMS = 0;
@@ -490,14 +517,15 @@ private:
     void loadItems();
     void changePlaylist(int playlist);
     int createPath();
+    int createMazePath(bool tmp = false);
     void zoom(double amount);
     void createPathBoundaries();
     void loginAccount();
     void createAccount();
     void saveAccount();
-    void accountCreationError();
+    void accountCreationError(int id = 0);
     void changeSize(QPainter &painter, int pixelSize, bool bold = false);
-    void buyMinusTower(int tpos);
+    void buyMinusTower(int tpos, bool intersects = false);
     void buyFavTower(int tpos);
     void buyRepostTower(int tpos);
     void buyBenisTower(int tpos);
@@ -509,6 +537,7 @@ private:
     void buyMinigunTower(int tpos);
     void buyShekelAnimation(int amount, int price);
     void placeWall(QPointF pos);
+    void fixEnemies();
     void delEnemy(int pos);
     void delTower(Tower *t);
     void reset(int custom = 0);
@@ -516,6 +545,7 @@ private:
     void pauseGame();
     void error_string(QString e1,QString e2,QString e3);
     void error_save(QFile &file, QString msg = "Fehler beim laden!");
+    int updatePath(int pos);
     int calcProjectiles(int num);
     int sendDataToServer(QString data);
     int getEnemySizeByType(int type = 0);
@@ -553,18 +583,19 @@ private slots:
     void on_ttowerTarget();
     void on_mediaStateChanged(QMediaPlayer::MediaStatus status);
     void on_appStateChanged(Qt::ApplicationState state);
-    void on_mapBuy(int subSelected);
+    void on_mapBuy(int subSelected, bool mode = 0);
     void on_buyError(int id);
     void on_purchaseShekel(QString paket);
     void on_buyItem(int pos);
     void on_buyTower(int pos);
     void on_openPage(int id);
     void on_setShekel(unsigned long long shekel, bool save = true);
-    void on_futureFinished();
     void on_addBonus(int amount);
     void on_graphicsChanged(int graphic);
     void on_energieSparenChanged(bool mode);
     void on_zoomChanged();
+    void on_status(QNetworkReply *reply);
+    void on_statustimeout();
 
 protected:
     bool event(QEvent *e) override;

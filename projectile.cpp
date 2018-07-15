@@ -10,7 +10,7 @@ void Projectile::update(bool full)
     if(full && !type) {
         double angle = this->angle;
         int newAngle = Engine::getAngle(crect().center(),target->rect().center());
-        if(target->soonBanned&&steps>3) {
+        if(target->soonBanned && steps>3) {
             if(vel<2.5) {
                 vel += 0.5;
             } else vel = 2.5;
@@ -24,7 +24,7 @@ void Projectile::update(bool full)
                 angle -= (diff*steps) / 3;
             }
             this->angle = angle;
-        } else if(!target->soonBanned&&steps) {
+        } else if(!target->soonBanned && steps >= 0) {
             this->angle = newAngle;
         }
         steps++;

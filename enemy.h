@@ -38,7 +38,7 @@ public:
     int type = 0;
     int path = -1;
     int animation = 0;
-    int price;
+    int price = 0;
     double healthWidth;
     double healthWidthTarget;
     int flash = 0;

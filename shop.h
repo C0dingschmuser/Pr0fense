@@ -10,6 +10,11 @@
 #include "level.h"
 #include "tower.h"
 
+enum _playingModes {
+    MODE_NORMAL,
+    MODE_MAZE,
+};
+
 class Item
 {
 public:
@@ -46,10 +51,13 @@ private:
     QPixmap shekelPlusPx;
     QPixmap sternPx;
     QPixmap wandPx;
+    QPixmap playingModeNormal;
+    QPixmap playingModeMaze;
     std::vector <QPixmap> towers;
     std::vector <QPixmap> shekelPacksPx;
     QRect buyRect = QRect(1525, 975, 325, 168);
     QRect infoRect = QRect(500, 980, 1000, 100);
+    QRect playingModeRect = QRect(1604, 200, 168, 168);
     std::vector <QRect> positions;
     std::vector <QRect> towerPositions;
     uint selected = 0;
@@ -58,8 +66,11 @@ public:
     explicit Shop(QObject *parent = nullptr);
     QColor grau = QColor(22,22,24);
     QColor edlerSpender = QColor(28,185,146);
+    bool playingMode = MODE_NORMAL;
     std::vector <QPixmap> lvlPreviews;
+    std::vector <QPixmap> mazelvlPreviews;
     std::vector <uint> lvlprices;
+    std::vector <uint> mazelvlPrices;
     std::vector <uint> towerPrices;
     std::vector <double> shekelPrices;
     std::vector <uint> shekelPacks;
@@ -77,7 +88,7 @@ public:
     void drawPrice(QPainter &painter, QRect pos, uint price);
 
 signals:
-    void buyMap(int pos);
+    void buyMap(int pos, bool mode = 0);
     void buyTower(int pos);
     void buyShekel(QString paket);
     void buyItem(int pos);

@@ -87,7 +87,9 @@ SOURCES += \
     account.cpp \
     settings.cpp \
     dailyreward.cpp \
-    statistics.cpp
+    statistics.cpp \
+    multiplayer.cpp \
+    astar/astar.cpp
 
 
 android: SOURCES += lockhelper.cpp
@@ -156,7 +158,10 @@ HEADERS += \
     account.h \
     settings.h \
     dailyreward.h \
-    statistics.h
+    statistics.h \
+    multiplayer.h \
+    astar/astar.h \
+    astar/fixinclude.h
 
 
 android: HEADERS += lockhelper.h

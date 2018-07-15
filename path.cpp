@@ -15,3 +15,15 @@ int Path::getNext(int cpos)
     }
     return next;
 }
+
+bool Path::contains(int num)
+{
+    bool ok = false;
+    for(uint i = 0; i < path.size(); i++) {
+        if(num == path[i]) {
+            ok = true;
+            break;
+        }
+    }
+    return ok;
+}

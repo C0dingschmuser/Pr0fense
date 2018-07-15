@@ -69,6 +69,8 @@ void Shop::loadGraphics()
     shekelPlusPx = QPixmap(":/data/images/ui/shop/PlusButton.png");
     sternPx = QPixmap(":/data/images/stern.png");
     items[1].image = QPixmap(":/data/images/effects/art13/0.png");
+    playingModeNormal = QPixmap(":/data/images/normal.png");
+    playingModeMaze = QPixmap(":/data/images/maze.png");
 }
 
 void Shop::shopClicked(QRect pos)
@@ -90,44 +92,75 @@ void Shop::shopClicked(QRect pos)
         }
         break;
     case 1: //maps
-        for(uint i = 0; i < mainlvls; i++) {
-            if(pos.intersects(positions[i])) {
-                subSelected = i;
-            }
-        }
-        if(pos.intersects(buyRect) &&
-                lvlprices[subSelected] > 0) {
-            int ok = 0;
-            if(subSelected) {
-                if(lvlprices[subSelected - 1]) ok = 1;
-            }
-            if(!ok) {
-                if(lvlprices[subSelected] > shekel) {
-                    ok = 2;
+        if(playingMode == MODE_NORMAL) {
+            for(uint i = 0; i < mainlvls; i++) {
+                if(pos.intersects(positions[i])) {
+                    subSelected = i;
                 }
             }
-            if(!ok) {
-                emit setShekel(shekel - lvlprices[subSelected], false);
-                lvlprices[subSelected] = 0;
-                switch(subSelected) {
-                case 1:
-                    towerLocks[2] = false;
-                    towerLocks[3] = false;
-                    break;
-                case 2:
-                    towerLocks[4] = false;
-                    towerLocks[5] = false;
-                    towerLocks[6] = false;
-                    break;
-                case 3:
-                    towerLocks[7] = false;
-                    towerLocks[8] = false;
-                    towerLocks[9] = false;
-                    break;
+            if(pos.intersects(buyRect) &&
+                    lvlprices[subSelected] > 0) {
+                int ok = 0;
+                if(subSelected) {
+                    if(lvlprices[subSelected - 1]) ok = 1;
                 }
-                emit buyMap(subSelected);
-            } else {
-                emit error_buy(ok);
+                if(!ok) {
+                    if(lvlprices[subSelected] > shekel) {
+                        ok = 2;
+                    }
+                }
+                if(!ok) {
+                    emit setShekel(shekel - lvlprices[subSelected], false);
+                    lvlprices[subSelected] = 0;
+                    switch(subSelected) {
+                    case 1:
+                        towerLocks[2] = false;
+                        towerLocks[3] = false;
+                        break;
+                    case 2:
+                        towerLocks[4] = false;
+                        towerLocks[5] = false;
+                        towerLocks[6] = false;
+                        break;
+                    case 3:
+                        towerLocks[7] = false;
+                        towerLocks[8] = false;
+                        towerLocks[9] = false;
+                        break;
+                    }
+                    emit buyMap(subSelected);
+                } else {
+                    emit error_buy(ok);
+                }
+            } else if(pos.intersects(playingModeRect)) {
+                playingMode = MODE_MAZE;
+            }
+        } else if(playingMode == MODE_MAZE) {
+            for(uint i = 0; i < mazelvlPrices.size(); i++) {
+                if(pos.intersects(positions[i])) {
+                    subSelected = i;
+                }
+            }
+            if(pos.intersects(buyRect) &&
+                    mazelvlPrices[subSelected] > 0) {
+                int ok = 0;
+                if(subSelected) {
+                    if(mazelvlPrices[subSelected - 1]) ok = 1;
+                }
+                if(!ok) {
+                    if(mazelvlPrices[subSelected] > shekel) {
+                        ok = 2;
+                    }
+                }
+                if(!ok) {
+                    emit setShekel(shekel - mazelvlPrices[subSelected], false);
+                    mazelvlPrices[subSelected] = 0;
+                    emit buyMap(subSelected, 1);
+                } else {
+                    emit error_buy(ok);
+                }
+            } else if(pos.intersects(playingModeRect)) {
+                playingMode = MODE_NORMAL;
             }
         }
         break;
@@ -217,23 +250,43 @@ void Shop::drawShop(QPainter &painter)
         painter.drawPixmap(positions[3], itemPx);
         break;
     case 1: //maps
-        for(int i = 0; i < (int)mainlvls; i++) {
-            painter.drawPixmap(positions[i], lvlPreviews[i]);
-            if(subSelected != i) {
-                painter.setOpacity(0.6);
-                painter.setBrush(grau);
-                painter.drawRect(positions[i]);
+        if(playingMode == MODE_NORMAL) {
+            painter.drawPixmap(playingModeRect, playingModeNormal);
+            for(int i = 0; i < (int)mainlvls; i++) {
+                painter.drawPixmap(positions[i], lvlPreviews[i]);
+                if(subSelected != i) {
+                    painter.setOpacity(0.6);
+                    painter.setBrush(grau);
+                    painter.drawRect(positions[i]);
+                }
+                painter.setOpacity(1);
+                if(lvlprices[i] > 0) {
+                    painter.drawPixmap(positions[i], lockPx);
+                    if(i == subSelected) {
+                        drawPrice(painter, buyRect, lvlprices[i]);
+                    }
+                }
             }
-            painter.setOpacity(1);
-            if(lvlprices[i] > 0) {
-                painter.drawPixmap(positions[i], lockPx);
-                if(i == subSelected) {
-                    drawPrice(painter, buyRect, lvlprices[i]);
+        } else if(playingMode == MODE_MAZE) {
+            painter.drawPixmap(playingModeRect, playingModeMaze);
+            for(int i = 0; i < (int)mazelvlPrices.size(); i++) {
+                painter.drawPixmap(positions[i], mazelvlPreviews[i]);
+                if(subSelected != i) {
+                    painter.setOpacity(0.6);
+                    painter.setBrush(grau);
+                    painter.drawRect(positions[i]);
+                }
+                painter.setOpacity(1);
+                if(mazelvlPrices[i] > 0) {
+                    painter.drawPixmap(positions[i], lockPx);
+                    if(i == subSelected) {
+                        drawPrice(painter, buyRect, mazelvlPrices[i]);
+                    }
                 }
             }
         }
         break;
-    case 2: //towers
+    case 2: {//towers
         for(int i = 1; i < (int)towers.size(); i++) {
             if(i == subSelected) {
                 painter.setOpacity(1);
@@ -255,18 +308,32 @@ void Shop::drawShop(QPainter &painter)
                         drawPrice(painter, buyRect, towerPrices[i-1]);
                     }
                 }
-            } else { //tower gesperrt
-                painter.setPen(Qt::white);
+            } else {
                 painter.drawPixmap(towerPositions[i-1], towers[0]);
-                Engine::changeSize(f, painter, 38, false);
-                painter.drawText(infoRect, Qt::AlignLeft, "Info: Falls du nicht weißt wie du Türme freischaltest,\n"
-                                                            "findest du beim ? unter 'Fortschrittssystem' Hilfe");
-                painter.setPen(Qt::NoPen);
             }
         }
+
+        bool ok = false;
+        if(subSelected > -1) {
+            if(towerLocks[subSelected-1]) {
+                ok = true;
+            }
+        } else ok = true;
+
+        if(ok) {
+            painter.setOpacity(1);
+            painter.setPen(Qt::white);
+            Engine::changeSize(f, painter, 38, false);
+            painter.drawText(infoRect, Qt::AlignLeft, "Info: Falls du nicht weißt wie du Türme freischaltest,\n"
+                                                        "findest du beim ? unter 'Fortschrittssystem' Hilfe");
+            painter.setOpacity(0.6);
+        }
+
+        painter.setPen(Qt::NoPen);
+
         //painter.setBrush(Qt::red);
         //painter.drawRect(infoRect);
-        break;
+        break; }
     case 3: //shekelpacks
         for(int i = 0; i < (int)shekelPacksPx.size(); i++) {
             if(i == subSelected) {

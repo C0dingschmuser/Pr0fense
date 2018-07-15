@@ -181,5 +181,18 @@
         <file>data/images/effects/art13/4.png</file>
         <file>data/images/effects/art13/5.png</file>
         <file>data/names.dat</file>
+        <file>data/images/maze.png</file>
+        <file>data/images/normal.png</file>
+        <file>data/images/maps/maze/map0.png</file>
+        <file>data/maps/maze/map0.dat</file>
+        <file>data/images/ui/towermenu/hide.png</file>
+        <file>data/images/ui/towermenu/show.png</file>
+        <file>data/images/ui/waveBreak.png</file>
+        <file>data/maps/maze/map1.dat</file>
+        <file>data/images/maps/maze/map1.png</file>
+        <file>data/images/maps/maze/map2.png</file>
+        <file>data/maps/maze/map2.dat</file>
+        <file>data/maps/maze/map3.dat</file>
+        <file>data/images/maps/maze/map3.png</file>
     </qresource>
 </RCC>

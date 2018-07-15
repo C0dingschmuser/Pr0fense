@@ -56,11 +56,14 @@ FrmMain::FrmMain(QOpenGLWidget *parent) :
     connect(settings, SIGNAL(zoomChanged()), this, SLOT(on_zoomChanged()));
 
     shop = new Shop();
-    connect(shop,SIGNAL(buyMap(int)),this,SLOT(on_mapBuy(int)));
+    connect(shop,SIGNAL(buyMap(int,bool)),this,SLOT(on_mapBuy(int,bool)));
     connect(shop,SIGNAL(error_buy(int)),this,SLOT(on_buyError(int)));
     connect(shop,SIGNAL(buyShekel(QString)),this,SLOT(on_purchaseShekel(QString)));
     connect(shop,SIGNAL(buyItem(int)),this,SLOT(on_buyItem(int)));
     connect(shop,SIGNAL(setShekel(unsigned long long,bool)),this,SLOT(on_setShekel(unsigned long long,bool)));
+
+    manager = new QNetworkAccessManager();
+    connect(manager, SIGNAL(finished(QNetworkReply*)), this, SLOT(on_status(QNetworkReply*)));
 
     statistics = new Statistics();
 
@@ -95,7 +98,6 @@ FrmMain::FrmMain(QOpenGLWidget *parent) :
     connect(t_grasAn,SIGNAL(timeout()),this,SLOT(on_tgrasAn()));
     connect(t_towerTarget,SIGNAL(timeout()),this,SLOT(on_ttowerTarget()));
 
-    connect(&watcher, SIGNAL(finished()), this, SLOT(on_futureFinished()));
     for(uint i = 1;i < 12;i++) {
         QPixmap p(":/data/images/path/path"+QString::number(i)+".png");
         pathTextures.push_back(p);
@@ -104,9 +106,27 @@ FrmMain::FrmMain(QOpenGLWidget *parent) :
         QPixmap p(":/data/images/towers/minigun/minigun" + QString::number(i+1));
         minigunTowerPx.push_back(p);
     }
+
+    //AStar astar;
+    astar.setHeuristics(manhattan);
+    /*astar.setMatrix(4,4);
+    astar.setStart(0,0);
+    astar.setEnd(3,0);
+    astar.setWay(1,0);
+    astar.setWay(2,0);
+    astar.setExpandCost(1,1,0);
+    astar.setExpandCost(1,2,0);
+    list<pair<UINT, UINT> > path;
+    path = astar.getPath();
+    list<pair<UINT, UINT> >::iterator pathIt;
+    for (pathIt = path.begin(); pathIt != path.end(); pathIt++) {
+        qDebug()<<pathIt->first<<pathIt->second;
+    }
+    astar.destroyMatrix();*/
     loadGraphics();
     loadUserData();
     loadLitteSprueche();
+
     initPhysics();
     if(accepted) gameLoading = false;
     shop->lvlPreviews = lvlPreviews;
@@ -144,13 +164,10 @@ FrmMain::FrmMain(QOpenGLWidget *parent) :
     QMetaObject::invokeMethod(t_wave,"start",Q_ARG(int,100)); //gegnerspawn
     QMetaObject::invokeMethod(t_waveSpeed,"start",Q_ARG(int,5)); //gegnerbewegung
 
-    statusConn = false;
-    futureID = 1;
-    QFuture<void> future = QtConcurrent::run(this, &FrmMain::getStatus);
-    watcher.setFuture(future);
     if(account.username != "") {
         account.accountState = ACCOUNT_PENDING;
     }
+    getStatus();
 }
 
 FrmMain::~FrmMain()
@@ -179,6 +196,18 @@ bool FrmMain::isLoading()
     bool ok = false;
     for(uint i = 0; i < tiles.size(); i++) {
         if(tiles[i]->opacity < 1) {
+            ok = true;
+            break;
+        }
+    }
+    return ok;
+}
+
+bool FrmMain::pathsContains(int num)
+{
+    bool ok = false;
+    for(uint i = 0; i < paths.size(); i++) {
+        if(paths[i].contains(num)) {
             ok = true;
             break;
         }
@@ -325,14 +354,14 @@ void FrmMain::upgradeDmg(Tower *tmpTower)
         tmpTower->repost += 1000;
         break;
     case TOWER_SNIPER: //sniper
-        tmpTower->dmg += 15;
+        tmpTower->dmg *= 2;
         break;
     case TOWER_FLAK: //flak
         tmpTower->dmg += 5;
         break;
     case TOWER_POISON: //poison
     case TOWER_MINIGUN:
-        tmpTower->dmg += 1;
+        tmpTower->dmg += 0.25;
         break;
     }
 }
@@ -647,7 +676,9 @@ void FrmMain::on_tmain()
                         towerMenuRectAnimation.x() + anSpeed,
                         towerMenuRectAnimation.y());
             if(towerMenuRectAnimation.x() >= towerMenuRect.x()) {
-                towerMenu = towerMenuAnimating;
+                if(!towerMenuHidden) {
+                    towerMenu = towerMenuAnimating;
+                }
                 towerMenuAnimating = -1;
             }
         } else { //schließen
@@ -1019,14 +1050,11 @@ void FrmMain::on_tmain()
                             }
                             projectiles.push_back(p);
                             towers[i]->shotsFiredSinceReload++;
-                            if(towers[i]->shotsFiredSinceReload > 1 &&
-                                    towers[i]->shotsFiredSinceReload < 3) {
-                                towers[i]->currentReload = towers[i]->reload * 0.6;
-                            } else if(towers[i]->shotsFiredSinceReload > 2 &&
-                                      towers[i]->shotsFiredSinceReload < 5) {
-                                towers[i]->currentReload = towers[i]->reload * 0.4;
+                            int max = 5;
+                            if(towers[i]->shotsFiredSinceReload < max) {
+                                towers[i]->currentReload = (max - towers[i]->shotsFiredSinceReload) * (0.1*towers[i]->reload);
                             } else {
-                                towers[i]->currentReload = towers[i]->reload * 0.1;
+                                towers[i]->currentReload = (0.1*towers[i]->reload);
                             }
                         }
                         if(towers[i]->type != TOWER_BAN &&
@@ -1133,10 +1161,40 @@ void FrmMain::on_tmain()
                 if(tiles[i]->wallTime > 0) {
                     tiles[i]->wallTime -= 10;
                 } else {
-                    b2Body *body = tiles[i]->body;
-                    tiles[i]->body = nullptr;
-                    tiles[i]->type = 1;
-                    delBodies.push_back(body);
+                    bool del = true;
+                    if(!pathsContains(i)) {
+                        //Wenn i nicht in einem pfad
+                        int maxX = mapwidth/80;
+                        int size = tiles.size();
+                        int left = i-1;
+                        int right = i+1;
+                        int up = i-maxX;
+                        int down = i+maxX;
+                        if((left/maxX == (int)i/maxX) && //selbe zeile
+                                left > -1 && left < size) {
+                            if(!pathsContains(left)) del = false; //wenn links pfad NICHT löschen
+                        }
+
+                        if((right/maxX == (int)i/maxX) &&
+                                right > -1 && right < size) {
+                            if(!pathsContains(right)) del = false;
+                        }
+
+                        if(up > -1 && up < size) {
+                            if(!pathsContains(up)) del = false;
+                        }
+
+                        if(down > -1 && down < size) {
+                            if(!pathsContains(down)) del = false;
+                        }
+                    }
+
+                    if(del) {
+                        b2Body *body = tiles[i]->body;
+                        tiles[i]->body = nullptr;
+                        tiles[i]->type = 1;
+                        delBodies.push_back(body);
+                    }
                 }
             }
         }
@@ -1144,8 +1202,8 @@ void FrmMain::on_tmain()
         if(DEBUG) {
             tmainMS = timerM.nsecsElapsed()/NANO_TO_MILLI;
         }
-    } catch(std::exception e) {
-
+    } catch(std::exception& e) {
+        qDebug()<<e.what();
     }
 }
 
@@ -1169,8 +1227,8 @@ void FrmMain::on_tprojectile()
             }
         }
         mutex.unlock();
-    } catch(std::exception e) {
-
+    } catch(std::exception& e) {
+        qDebug()<<e.what();
     }
     if(DEBUG) {
         tprojectileMS = timerP.nsecsElapsed()/NANO_TO_MILLI;
@@ -1199,8 +1257,8 @@ void FrmMain::on_tprojectilefull()
             }
         }
         mutex.unlock();
-    } catch(std::exception e) {
-
+    } catch(std::exception& e) {
+        qDebug()<<e.what();
     }
     if(DEBUG) {
         tprojectileFMS = timerPF.nsecsElapsed()/NANO_TO_MILLI;
@@ -1220,6 +1278,8 @@ void FrmMain::on_twave()
         if(paths.size() > 1) {
             chosenpath = Engine::random(0,paths.size());
         }
+        if(waveBreak) return;
+
         QRect knot = tiles[paths[chosenpath].path[0]]->rect();
         int width = 0;
         int pxID = Engine::random(0,normalEnemys.size());
@@ -1329,9 +1389,18 @@ void FrmMain::on_twave()
             }*/
             //playingSpeed = 0;
             //gamePaused = true;
-            if(mapID != 2 || !shop->lvlprices[mainLevels-1]) {
-                setShekel(shop->shekel + currentWave.calcShekel());
+            if(mapID != 2) {
+                if(playingMode == MODE_NORMAL) {
+                    if(!shop->lvlprices[mainLevels-1]) {
+                        setShekel(shop->shekel + currentWave.calcShekel());
+                    }
+                } else if(playingMode == MODE_MAZE) {
+                    //if(!shop->lvlprices[mainLevels-1]) {
+                        setShekel(shop->shekel + currentWave.calcShekel());
+                    //}
+                }
             }
+            waveBreak = 5000;
             setWaveCount(currentWave.waveCount + 1);
             currentWave.updateEnemysPerWave(false, mapwidth/80);
             currentWave.resetWave();
@@ -1389,8 +1458,8 @@ void FrmMain::on_twave()
         //mutex.lock();
         createBodies.push_back(e);
         //mutex.unlock();
-    } catch(std::exception e) {
-
+    } catch(std::exception& e) {
+        qDebug()<<e.what();
     }
 }
 
@@ -1571,8 +1640,8 @@ void FrmMain::on_twaveSpeed()
                 twavespeedMS = timerWS.nsecsElapsed()/NANO_TO_MILLI;
             }
         }
-    } catch(std::exception e) {
-
+    } catch(std::exception& e) {
+        qDebug()<<e.what();
     }
 }
 
@@ -1589,7 +1658,20 @@ void FrmMain::on_tanimation()
                 case 1: //levels
                 {
                     reset();
-                    loadMap("map"+QString::number(subLevelSelected-4));
+                    if(playingMode == MODE_NORMAL) {
+                        loadMap("map"+QString::number(subLevelSelected-4));
+                    } else if(playingMode == MODE_MAZE) {
+                        loadMap("maze/map"+QString::number(subLevelSelected-4));
+                        waypoints.resize(0);
+                        for(uint i = 0; i < tiles.size(); i++) {
+                            if(tiles[i]->type >= TILE_WAYP) {
+                                waypoints.push_back(i);
+                            }
+                        }
+                        if(waypoints.size() > 1) {
+                            std::sort(waypoints.begin(), waypoints.end());
+                        }
+                    }
                     createBounds();
                     gamePaused = true;
                     //active = 1;
@@ -1616,6 +1698,17 @@ void FrmMain::on_tanimation()
                 reset(2);
                 subLevelSelected = subActiveSelected;
                 loadMap(mName,2,mWidth,mHeight);
+                if(playingMode == MODE_MAZE) {
+                    waypoints.resize(0);
+                    for(uint i = 0; i < tiles.size(); i++) {
+                        if(tiles[i]->type >= TILE_WAYP) {
+                            waypoints.push_back(i);
+                        }
+                    }
+                    if(waypoints.size() > 1) {
+                        std::sort(waypoints.begin(), waypoints.end());
+                    }
+                }
                 //active = 2;
                 break;
             case ANIMATION_BACK: //zurück
@@ -1751,6 +1844,12 @@ void FrmMain::on_tphysics()
 
 void FrmMain::on_tidle()
 {
+    if(playingSpeed && waveBreak) {
+        if(waveBreak > 0) {
+            waveBreak -= 1000;
+            if(waveBreak < 0) waveBreak = 0;
+        }
+    }
     if(enemys.size() && playingSpeed && !gamePaused) {
         for(uint i = 0; i < enemys.size(); i++) {
             QRectF oldPos = enemys[i]->oldpos;
@@ -2042,18 +2141,16 @@ void FrmMain::on_appStateChanged(Qt::ApplicationState state)
             playingSpeed = 1;
             resetTimers();
         }
-        statusConn = false;
-        futureID = 1;
-        connectionTries = 0;
         dateVerified = false;
-        QFuture<void> future = QtConcurrent::run(this, &FrmMain::getStatus);
-        watcher.setFuture(future);
+        getStatus();
     }
 }
 
-void FrmMain::on_mapBuy(int subSelected)
+void FrmMain::on_mapBuy(int subSelected, bool mode)
 {
-    lvlPrices[subSelected] = 0;
+    if(!mode) {
+        lvlPrices[subSelected] = 0;
+    }
     saveOptions();
 }
 
@@ -2076,9 +2173,12 @@ void FrmMain::changeSize(QPainter &painter, int pixelSize, bool bold)
     painter.setFont(f);
 }
 
-void FrmMain::buyMinusTower(int tpos)
+void FrmMain::buyMinusTower(int tpos, bool intersects)
 {
     //loop bei kaufen & checks + reset testen & einbauen
+    if(playingMode == MODE_MAZE) {
+        if(pathsContains(tpos)) intersects = true;
+    }
     int cost = minusTowerCost;
     setBenis(benis - cost);
     Tower *t = new Tower();
@@ -2096,13 +2196,20 @@ void FrmMain::buyMinusTower(int tpos)
     t->price = minusTowerCost;
     addTowerTargets(t);
     towers.push_back(t);
+    tiles[tpos]->type = TILE_TOWER;
     tiles[tpos]->t = t;
     if(chosenTiles.size()) {
         towerMenu = chosenTiles[chosenTiles.size()-1];
         int num = chosenTiles[0];
         chosenTiles.erase(chosenTiles.begin());
-        buyMinusTower(num);
+        buyMinusTower(num, intersects);
     } else t->tmpRangeDir = 0;
+
+    if(playingMode == MODE_MAZE) {
+        if(intersects) {
+            updatePath(tpos);
+        }
+    }
     towerMenuSelected = 0;
 }
 
@@ -2204,7 +2311,7 @@ void FrmMain::buyBanTower(int tpos)
     t->stun = 0;
     t->repost = 0;
     t->pos = tiles[tpos]->pos;
-    t->reload = 20000;
+    t->reload = 30000;
     t->currentReload = t->reload;
     //t->reloadMax = 30000;
     t->hasDamage = false;
@@ -2233,13 +2340,13 @@ void FrmMain::buySniperTower(int tpos)
     setBenis(benis - sniperTowerCost);
     Tower *t = new Tower();
     t->type = TOWER_SNIPER;
-    t->dmg = 40;
+    t->dmg = 50;
     t->stun = 0;
     t->pos = tiles[tpos]->pos;
     t->reload = 4000;
     t->currentReload = t->reload;
     t->range = 225;
-    t->pspeed = 3.5;
+    t->pspeed = 3.75;
     t->name = "Snipertower";
     t->tnum = tpos;
     t->angleSpeed = 0.9;
@@ -2318,7 +2425,7 @@ void FrmMain::buyPoisonTower(int tpos)
     setBenis(benis - poisonTowerCost);
     Tower *t = new Tower();
     t->type = TOWER_POISON;
-    t->dmg = 1;
+    t->dmg = 0.25;
     t->stun = 0;
     t->pos = tiles[tpos]->pos;
     t->reload = 4000;
@@ -2419,6 +2526,27 @@ void FrmMain::placeWall(QPointF pos)
     }
 }
 
+void FrmMain::fixEnemies()
+{
+    //evtl zurück zum letzten wegpunkt?
+    for(uint i = 0; i < enemys.size(); i++) {
+        int cpos = enemys[i]->cpos;
+        if(!pathsContains(cpos)) {
+            if(tiles[cpos]->type != TILE_BASE &&
+                    tiles[cpos]->type != TILE_SPAWN) {
+                int newpos = paths[enemys[i]->path].path[0];
+                QRect knot = tiles[newpos]->rect();
+                QRectF pos = enemys[i]->rectF();
+                double x = knot.x()+((80-pos.width())/2)+pos.width()/2;
+                double y = knot.y()+((80-pos.width())/2)+pos.width()/2;
+                enemys[i]->cpos = 0;
+                enemys[i]->speed *= 2;
+                enemys[i]->moveTo(x-pos.width()/2,y-pos.height()/2);
+            }
+        }
+    }
+}
+
 void FrmMain::delEnemy(int pos)
 {
     for(uint i=0;i<projectiles.size();i++) {
@@ -2485,6 +2613,7 @@ void FrmMain::reset(int custom)
 #endif
     upgradeCost = 0;
     towerMenu = -1;
+    tempPath.path.resize(0);
     if(mapwidth) {
         setWaveCount(0);
         currentWave.resetWave(true);
@@ -2502,7 +2631,9 @@ void FrmMain::reset(int custom)
     error = false;
     spawnTiles = false;
     setBaseHp(75);
+    enemyWarning = false;
     beginFade = 500;
+    waveBreak = 0;
     powerupSelected = -1;
     shekelCoinSize = 0;
     ownBaseCount = 0;
@@ -2578,6 +2709,40 @@ void FrmMain::error_save(QFile &file, QString msg)
     active = STATE_MAINMENU;
     QMessageBox::warning(this,"Fehler",msg);
     return;
+}
+
+int FrmMain::updatePath(int pos)
+{
+    //todo
+    //
+    //- abfrage nach gegnern + fehlermeldung
+    //- pfad bei turmverkauf
+    int ret = 0;
+    tiles[pos]->type = TILE_TOWER;
+    mutex.lock();
+
+    for(uint i = 0; i < tiles.size(); i++) {
+        if(tiles[i]->body != nullptr) {
+            if(tiles[i]->type != TILE_ART13) {
+                b2Body *tmp = tiles[i]->body;
+                tiles[i]->body = nullptr;
+                delBodies.push_back(tmp);
+            }
+        }
+    }
+
+    ret = createMazePath();
+    createPathBoundaries();
+    fixEnemies();
+    enemyWarning = false;
+    if(ret) {
+        mutex.unlock();
+        return ret;
+    }
+    mapPx = createMapImage(0);
+    mapPx_gras = createMapImage(2);
+
+    mutex.unlock();
 }
 
 int FrmMain::calcProjectiles(int num)
@@ -2743,6 +2908,25 @@ int FrmMain::getEnemySizeByType(int type)
 
 int FrmMain::getPathId(int i)
 {
+    int ppos = -1;
+    int path = -1;
+    for(uint a = 0; a < paths.size(); a++) {
+        if(paths[a].contains(i)) {
+            path = a;
+        }
+    }
+
+    if(path > -1) {
+        for(uint a = 0; a < paths[path].path.size(); a++) {
+            if(paths[path].path[a] == i) {
+                ppos = a;
+            }
+        }
+    } else return -1;
+
+    if(ppos == -1) return -1;
+
+
     int size = tiles.size();
     int maxX = mapwidth/80;
     int left = i-1,
@@ -2755,30 +2939,104 @@ int FrmMain::getPathId(int i)
     bool upOk = false;
     bool downOk = false;
 
-    if((left/maxX == i/maxX) &&
+    if((left/maxX == i/maxX) && //selbe zeile
             left > -1 && left < size) {
         if(tiles[left]->type == 1 ||
                 tiles[left]->type == 4 ||
-                tiles[left]->type == 5) leftOk = true;
+                tiles[left]->type == 5 ||
+                tiles[left]->type >= TILE_WAYP) {
+            if(ppos - 1 > -1) {
+                if(paths[path].path[ppos-1] == left) {
+                    leftOk = true;
+                }
+            }
+            if(ppos + 1 < (int)paths[path].path.size()) {
+                if(paths[path].path[ppos+1] == left) {
+                    leftOk = true;
+                }
+            }
+
+        }
     }
 
     if((right/maxX == i/maxX) &&
             right > -1 && right < size) {
         if(tiles[right]->type == 1 ||
                 tiles[right]->type == 4 ||
-                tiles[right]->type == 5) rightOk = true;
+                tiles[right]->type == 5 ||
+                tiles[right]->type >= TILE_WAYP) {
+            if(ppos + 1 < (int)paths[path].path.size()) {
+                if(paths[path].path[ppos+1] == right) {
+                    rightOk = true;
+                }
+            }
+            if(ppos - 1 > -1 ) {
+                if(paths[path].path[ppos-1] == right) {
+                    rightOk = true;
+                }
+            }
+        }
     }
 
     if(up > -1 && up < size) {
         if(tiles[up]->type == 1 ||
                 tiles[up]->type == 4 ||
-                tiles[up]->type == 5) upOk = true;
+                tiles[up]->type == 5 ||
+                tiles[up]->type >= TILE_WAYP) {
+            if(ppos + 1 < (int)paths[path].path.size()) {
+                if(paths[path].path[ppos+1] == up) {
+                    upOk = true;
+                }
+            }
+            if(ppos - 1 > -1 ) {
+                if(paths[path].path[ppos-1] == up) {
+                    upOk = true;
+                }
+            }
+        }
     }
 
     if(down > -1 && down < size) {
         if(tiles[down]->type == 1 ||
                 tiles[down]->type == 4 ||
-                tiles[down]->type == 5) downOk = true;
+                tiles[down]->type == 5 ||
+                tiles[down]->type >= TILE_WAYP) {
+            if(ppos + 1 < (int)paths[path].path.size()) {
+                if(paths[path].path[ppos+1] == down) {
+                    downOk = true;
+                }
+            }
+            if(ppos - 1 > -1 ) {
+                if(paths[path].path[ppos-1] == down) {
+                    downOk = true;
+                }
+            }
+        }
+    }
+
+    //check ob in weg
+    if(leftOk) {
+        if(!pathsContains(left) &&
+                tiles[left]->type != TILE_BASE &&
+                tiles[left]->type != TILE_SPAWN) leftOk = false;
+    }
+
+    if(rightOk) {
+        if(!pathsContains(right) &&
+                tiles[right]->type != TILE_BASE &&
+                tiles[right]->type != TILE_SPAWN) rightOk = false;
+    }
+
+    if(upOk) {
+        if(!pathsContains(up) &&
+                tiles[up]->type != TILE_BASE &&
+                tiles[up]->type != TILE_SPAWN) upOk = false;
+    }
+
+    if(down) {
+        if(!pathsContains(down) &&
+                tiles[down]->type != TILE_BASE &&
+                tiles[down]->type != TILE_SPAWN) downOk = false;
     }
 
     if(leftOk && rightOk && !upOk && !downOk) {
@@ -2899,63 +3157,10 @@ QDate FrmMain::getServerDate()
 
 void FrmMain::getStatus()
 {
-    QTcpSocket *server = new QTcpSocket();
-    server->connectToHost(serverIP,38910);
-    server->waitForConnected();
-    bool connOk = false;
-    if(server->state() == QTcpSocket::ConnectedState) {
-        QString data = ".0#"+account.username+"#~";
-        server->write(data.toUtf8());
-        server->waitForBytesWritten(2500);
-        server->waitForReadyRead(2500);
-        QString response = server->readAll();
-        if(response.size()) {
-            if(response.at(0)=="." && response.contains("~")) { //Antwort OK
-                connOk = true;
-                response.remove(0,1);
-                QStringList split = response.split("#");
-                if(version < split[1].toDouble()) { //Outdated
-                    outdated = true;
-                }
-                if(newestPost < split[0].toInt()) { //Neuer Post
-                    newestPost = split[0].toInt();
-                    newPost = true;
-                }
-                if(split.size() > 3) {
-                    int am = split[2].toInt();
-                    if(am > 0) {
-                        restore(am);
-                    }
-                }
-                //qDebug()<<split.size();
-                if(split.size() > 4) {
-                    int num = split[3].toInt();
-                    if(num > -1) {
-                        switch(num) {
-                        case 0:
-                            shop->items[0].locked = false;
-                            superfastUnlocked = true;
-                            break;
-                        }
-                        saveOptions();
-                    }
-                }
-                if(split.size() > 5) {
-                    currentDate = QDate::fromString(split[4], "ddMMyyyy");
-                    if(lastRewardDate.daysTo(currentDate) > 1) {
-                        dailyReward->bonus = 0;
-                    }
-                    if(lastPlayedDate != currentDate) {
-                        playedGames = 0;
-                    }
-                    dateVerified = true;
-                }
-            }
-        }
-    } else qDebug()<<"Connection failed. [getStatus]";
-    server->close();
-    server->deleteLater();
-    statusConn = connOk;
+    QNetworkRequest request;
+    request.setUrl(QUrl("http://flatterfogel.ddns.net/main.php?status=true&name="+account.username));
+    nreply = manager->get(request);
+    QTimer::singleShot(10000, this, SLOT(on_statustimeout()));
 }
 
 void FrmMain::newPostInfo()
@@ -3027,31 +3232,6 @@ void FrmMain::on_setShekel(unsigned long long shekel, bool save)
     setShekel(shekel, save);
 }
 
-void FrmMain::on_futureFinished()
-{
-    if(futureID == 1) { //getstatus
-        if(!statusConn && connectionTries < 5) {
-            connectionTries++;
-            QFuture<void> future = QtConcurrent::run(this, &FrmMain::getStatus);
-            watcher.setFuture(future);
-        } else if(statusConn) {
-            if(account.username != "") {
-                futureID = 2;
-                statusConn = false;
-                connectionTries = 0;
-                QFuture<void> future = QtConcurrent::run(&account, &Account::checkAccount, statusConn);
-                watcher.setFuture(future);
-            }
-        }
-    } else if(futureID == 2) { //accountstatus
-        if(!statusConn && connectionTries < 5) {
-            connectionTries++;
-            QFuture<void> future = QtConcurrent::run(&account, &Account::checkAccount, statusConn);
-            watcher.setFuture(future);
-        }
-    }
-}
-
 void FrmMain::on_addBonus(int amount)
 {
     lastRewardDate = currentDate;
@@ -3085,6 +3265,66 @@ void FrmMain::on_energieSparenChanged(bool mode)
 void FrmMain::on_zoomChanged()
 {
     saveOptions();
+}
+
+void FrmMain::on_status(QNetworkReply *reply)
+{
+    if (reply->error()) {
+        qDebug() << reply->errorString();
+        return;
+    }
+
+    QString response = reply->readAll();
+    reply = nullptr;
+    if(response.size()) {
+        if(response.at(0)=="." && response.contains("~")) { //Antwort OK
+            response.remove(0,1);
+            QStringList split = response.split("#");
+            if(version < split[1].toDouble()) { //Outdated
+                outdated = true;
+            }
+            if(newestPost < split[0].toInt()) { //Neuer Post
+                newestPost = split[0].toInt();
+                newPost = true;
+            }
+
+            //Accountstate
+            account.accountState = split[2].toInt();
+
+            //restore shekel
+            int am = split[3].toInt();
+            if(am > 0) {
+                restore(am);
+            }
+
+            //restore items
+            int num = split[4].toInt();
+            if(num > -1) {
+                switch(num) {
+                case 0:
+                    shop->items[0].locked = false;
+                    superfastUnlocked = true;
+                    break;
+                }
+                saveOptions();
+            }
+
+            //Datumabfrage
+            currentDate = QDate::fromString(split[5], "ddMMyyyy");
+            if(lastRewardDate.daysTo(currentDate) > 1) {
+                dailyReward->bonus = 0;
+            }
+            if(lastPlayedDate != currentDate) {
+                playedGames = 0;
+            }
+            dateVerified = true;
+        }
+    }
+}
+
+void FrmMain::on_statustimeout()
+{
+    nreply->abort();
 }
 
 Level FrmMain::parseLvlString(QString lvl, int startPos)
@@ -3215,11 +3455,13 @@ QPixmap FrmMain::createMapImage(int custom)
         //if(tiles[i]->pos.intersects(viewRect)) {
             QPixmap p;
             switch(tiles[i]->type) {
-            case 1: {//weg
-                p = pathTextures[getPathId(i)];
-                break; }
             case 2: //turmplatz
-                p = turmtile;
+                if(playingMode != MODE_MAZE) {
+                    p = turmtile;
+                } else {
+                    painter.setBrush(QColor(172,172,172));
+                    painter.drawRect(tiles[i]->rect());
+                }
                 break;
             case 3: //leer
                 p = emptytile;
@@ -3238,10 +3480,33 @@ QPixmap FrmMain::createMapImage(int custom)
                 }
                 break;
             }
-            painter.drawPixmap(tiles[i]->rect(),p);
+            if(tiles[i]->type != TILE_PATH && tiles[i]->type < TILE_WAYP) {
+                painter.drawPixmap(tiles[i]->rect(),p);
+            } else {
+                painter.setBrush(QColor(172,172,172));
+                painter.drawRect(tiles[i]->rect());
+            }
 
         //}
     }
+
+    for(uint i = 0; i < paths.size(); i++) {
+        for(uint a = 0; a < paths[i].path.size(); a++) {
+            int num = paths[i].path[a];
+            if(tiles[num]->type == TILE_PATH || tiles[num]->type >= TILE_WAYP) {
+                QPixmap p;
+                int id = getPathId(num);
+                if(id > -1) {
+                    p = pathTextures[id];
+                    painter.drawPixmap(tiles[num]->rect(),p);
+                } else {
+                    painter.setBrush(QColor(172,172,172));
+                    painter.drawRect(tiles[i]->rect());
+                }
+            }
+        }
+    }
+
     return map;
 }
 
@@ -3268,11 +3533,13 @@ QPixmap FrmMain::createMapImage(QString data, int width, int height)
         int type = split[i].toInt();
         QPixmap p;
         switch(type) {
-        case 1: //weg
-            p = pathTextures[getPathId(i)];
-            break;
         case 2: //turmplatz
-            p = turmtile;
+            if(playingMode != MODE_MAZE) {
+                p = turmtile;
+            } else {
+                painter.setBrush(QColor(172,172,172));
+                painter.drawRect(rects[i]);
+            }
             break;
         case 3: //leer
             p = emptytile;
@@ -3287,9 +3554,16 @@ QPixmap FrmMain::createMapImage(QString data, int width, int height)
             p = grasAnimation[0];
             break;
         }
-        //if(type!=6) {
+        if(type != TILE_PATH && type < TILE_WAYP) {
             painter.drawPixmap(rects[i],p);
-        //}
+        } else {
+            if(type < TILE_WAYP) {
+                painter.setBrush(QColor(172,172,172));
+            } else {
+                painter.setBrush(Qt::black);
+            }
+            painter.drawRect(rects[i]);
+        }
     }
     return map;
 }
@@ -3326,15 +3600,48 @@ void FrmMain::drawIngame(QPainter &painter)
                 }
             }
             for(uint a = 0; a < tiles.size(); a++) {
-                if(tiles[a]->type == 7) {
-                    painter.drawPixmap(tiles[a]->rect(), wandAnimation[(5 - tiles[a]->wallTime / 1000)-1]);
+                if(tiles[a]->type == TILE_ART13) {
+                    uint num = 0;
+                    if(tiles[a]->wallTime > 0 && tiles[a]->wallTime < 5000) {
+                        num = (5 - tiles[a]->wallTime / 1000)-1;
+                    }
+                    painter.drawPixmap(tiles[a]->rect(), wandAnimation[num]);
                 }
             }
         }
+        if(playingMode == MODE_MAZE) {
+            changeSize(painter,64,true);
+            for(uint i = 0; i < waypoints.size(); i++) {
+                painter.setPen(Qt::white);
+                painter.drawText(tiles[waypoints[i]]->rect(), Qt::AlignCenter, QString::number(i));
+                painter.setPen(Qt::NoPen);
+            }
+        }
     }
+
+    /*painter.setPen(Qt::white); //Tile nummern anzeigen
+    changeSize(painter,8,true);
+    for(uint i = 0; i < tiles.size(); i++) {
+        painter.drawText(tiles[i]->rect(), Qt::AlignCenter, QString::number(i));
+    }
+    painter.setPen(Qt::NoPen);*/
+
+    painter.setOpacity(0.5);
+    if(playingMode == MODE_MAZE) {
+        if(tempPath.path.size()) {
+            for(uint i = 0; i < tempPath.path.size(); i++) {
+                int num = (((double)i/tempPath.path.size())*255);
+                painter.setBrush(QColor(num,0,0));
+                painter.drawRect(tiles[tempPath.path[i]]->rect());
+            }
+        }
+    }
+    painter.setOpacity(1);
+
     if(active == STATE_EDITOR) {
         drawEditor(painter);
     }
+
 
     for(uint i=0;i<projectiles.size();i++) {
         if(projectiles[i] != nullptr) { //nullptr abfrage
@@ -3403,15 +3710,24 @@ void FrmMain::drawIngame(QPainter &painter)
                     painter.drawPixmap(enemys[i]->rectF(), normalEnemys[enemys[i]->imgID], QRectF(0,0,16,16));
                 } else if(enemys[i]->type == ENEMY_GEBANNT) {
                     QRectF t = enemys[i]->rectF();
-                    painter.save();
-                    painter.translate(t.center());
-                    painter.rotate(enemys[i]->animation);
-                    painter.translate(-t.center().x(),-t.center().y());
-                    painter.drawPixmap(enemys[i]->rectF(), normalEnemys[enemys[i]->imgID], QRectF(0,0,16,16));
-                    painter.setBrush(Engine::getColor(ENEMY_MOD));
-                    painter.setOpacity(0.5*enemys[i]->opacity);
-                    painter.drawRect(enemys[i]->rectF());
-                    painter.restore();
+                    if(settings->graphicQuality == GRAPHIC_HIGH) {
+                        painter.save();
+                        painter.translate(t.center());
+                        painter.rotate(enemys[i]->animation);
+                        painter.translate(-t.center().x(),-t.center().y());
+                        painter.drawPixmap(t, normalEnemys[enemys[i]->imgID], QRectF(0,0,16,16));
+                        painter.setBrush(Engine::getColor(ENEMY_MOD));
+                        painter.setOpacity(0.5*enemys[i]->opacity);
+                        painter.drawRect(t);
+                        painter.restore();
+                    } else {
+                        painter.drawPixmap(t, normalEnemys[enemys[i]->imgID], QRectF(0,0,16,16));
+                        painter.setBrush(Engine::getColor(ENEMY_MOD));
+                        int num = enemys[i]->animation;
+                        if(num > 180) num -= 180;
+                        painter.setOpacity(0.7*(((double)num/180)*enemys[i]->opacity));
+                        painter.drawRect(t);
+                    }
                 } else if(enemys[i]->type == ENEMY_LEGENDE) {
                     painter.drawPixmap(enemys[i]->rectF(), bossPx, QRectF(0,0,156,156));
                 }
@@ -3747,20 +4063,32 @@ void FrmMain::drawHUD(QPainter &painter)
         painter.drawText(85,70,QString::number(benis));
         painter.drawText(85,140,QString::number(basehp));
         painter.drawText(QRect(1600,20,200,60),Qt::AlignRight,QString::number(currentWave.waveCount));
-        switch(playingSpeed) {
-        case 0:
-            painter.drawPixmap(btnPlayingSpeedRect,btnStopPx);
-            painter.drawText(1725,895,"Start");
-            break;
-        case 1:
-            painter.drawPixmap(btnPlayingSpeedRect,btnNormalPx);
-            break;
-        case 2:
-            painter.drawPixmap(btnPlayingSpeedRect,btnFastPx);
-            break;
-        case 3:
-            painter.drawPixmap(btnPlayingSpeedRect,btnSuperfastPx);
-            break;
+        if(!waveBreak) {
+            switch(playingSpeed) {
+            case 0:
+                painter.drawPixmap(btnPlayingSpeedRect,btnStopPx);
+                painter.drawText(1725,895,"Start");
+                break;
+            case 1:
+                painter.drawPixmap(btnPlayingSpeedRect,btnNormalPx);
+                break;
+            case 2:
+                painter.drawPixmap(btnPlayingSpeedRect,btnFastPx);
+                break;
+            case 3:
+                painter.drawPixmap(btnPlayingSpeedRect,btnSuperfastPx);
+                break;
+            }
+        } else {
+            painter.drawPixmap(btnPlayingSpeedRect,waveBreakPx);
+            changeSize(painter,64, true);
+            painter.setPen(Qt::white);
+            QRect r = btnPlayingSpeedRect;
+            r.adjust(0,-25,0,0);
+            painter.drawText(r, Qt::AlignCenter, QString::number(waveBreak/1000));
+            changeSize(painter,48, true);
+            painter.drawText(btnPlayingSpeedRect, Qt::AlignCenter | Qt::AlignBottom, "SKIP");
+            painter.setPen(Qt::NoPen);
         }
 
         if(settings->zoomMode == 1) {
@@ -3794,9 +4122,14 @@ void FrmMain::drawHUD(QPainter &painter)
             }
         }
 
-        painter.setPen(Qt::NoPen);
         painter.setOpacity(1);
+        if(enemyWarning && playingMode == MODE_MAZE) {
+            changeSize(painter,64,true);
+            painter.setPen(Qt::red);
+            painter.drawText(QRect(0,700,1920,300), Qt::AlignCenter, "Warnung: Gegner außerhalb vom neuen Pfad!");
+        }
 
+        painter.setPen(Qt::NoPen);
         /*if(playingSpeed && canStartNextWave) {
             painter.setOpacity(1);
         } else painter.setOpacity(0.6);
@@ -3810,7 +4143,7 @@ void FrmMain::drawHUD(QPainter &painter)
 
 void FrmMain::drawTowerMenu(QPainter &painter)
 {
-    if(towerMenu > -1 || towerMenuAnimating > -1) {
+    if((towerMenu > -1 || towerMenuAnimating > -1) && (!towerMenuHidden || towerMenuRectAnimation.x() > -600)) {
         painter.setOpacity(0.6*fade);
         painter.setBrush(Qt::black);
         double offX = 0;
@@ -3828,6 +4161,11 @@ void FrmMain::drawTowerMenu(QPainter &painter)
         painter.setOpacity(fade);
         changeSize(painter,38,true);
         painter.setPen(Qt::white);
+
+        if(!towerMenuHidden) {
+            painter.drawPixmap(offX+towerMenuCloseRect.x(), towerMenuCloseRect.y(), 100, 100, towerMenuClosePx);
+        }
+
         Tower *tmpTower = tiles[towerNum]->t;
         if(tmpTower != nullptr) {//UpgradeMenü
             changeSize(painter,46,true);
@@ -4139,6 +4477,8 @@ void FrmMain::drawTowerMenu(QPainter &painter)
                 painter.translate(-towerMenuRectAnimation.x(), 0);
             }
         }
+    } else if(towerMenu > -1 && towerMenuHidden) {
+        painter.drawPixmap(towerMenuOpenRect, towerMenuOpenPx);
     }
 }
 
@@ -4547,11 +4887,23 @@ void FrmMain::drawMainMenu(QPainter &painter)
         //Levelanzeige
         switch(subActiveSelected) {
         case 1: //levels
-            for(uint i = 0;i <  mainLevels;i++) {
-                if(!lvlPrices[i]) {
-                    if(i+4!=subLevelSelected) painter.setOpacity(0.6*fade);
-                    painter.drawPixmap(mainLvlRects[i],lvlPreviews[i]);
-                    painter.setOpacity(fade);
+            if(playingMode == MODE_NORMAL) {
+                painter.drawPixmap(playingModeRect, playingModeNormal);
+                for(uint i = 0;i <  mainLevels;i++) {
+                    if(!lvlPrices[i]) {
+                        if(i+4!=subLevelSelected) painter.setOpacity(0.6*fade);
+                        painter.drawPixmap(mainLvlRects[i],lvlPreviews[i]);
+                        painter.setOpacity(fade);
+                    }
+                }
+            } else if(playingMode == MODE_MAZE) {
+                painter.drawPixmap(playingModeRect, playingModeMaze);
+                for(uint i = 0;i <  mazeLevels;i++) {
+                    if(!shop->mazelvlPrices[i]) {
+                        if(i+4!=subLevelSelected) painter.setOpacity(0.6*fade);
+                        painter.drawPixmap(mainLvlRects[i],mazelvlPreviews[i]);
+                        painter.setOpacity(fade);
+                    }
                 }
             }
             break;
@@ -4718,6 +5070,17 @@ void FrmMain::drawEditorMenu(QPainter &painter)
         painter.setOpacity(1*fade);
     }
     painter.drawPixmap(mClearRect,mapTile);
+
+    if(playingMode == MODE_MAZE) {
+        if(editorSelected!=7) {
+            painter.setOpacity(0.6*fade);
+        } else {
+            painter.setOpacity(1*fade);
+        }
+        painter.drawPixmap(mWaypointRect,emptytile);
+    }
+
+
     painter.setOpacity(fade);
     if(!mapPlaying) {
         painter.drawPixmap(mPlayRect,mPlayPx);
@@ -4748,9 +5111,9 @@ void FrmMain::drawBackMenu(QPainter &painter)
 
 void FrmMain::towerMenuClicked(QRect pos)
 {
-    if(towerMenu == -1) return;
+    if(towerMenu == -1 || towerMenuHidden || towerMenuAnimating > -1) return;
     Tower *tmpTower = tiles[towerMenu]->t;
-    if(tmpTower!=nullptr) {//turm steht, upgrade
+    if(tmpTower != nullptr) { //turm steht, upgrade
         if(!tmpTower->disabled) {
             if(pos.intersects(btnDmgRect) && tmpTower->hasDamage) { //dmg upgrade
                 if(tmpTower->dmglvl < 3) {
@@ -4832,6 +5195,8 @@ void FrmMain::towerMenuClicked(QRect pos)
         }
     } else { //noch kein turm, turmauswahl
         bool buy = false;
+        bool clicked = false;
+        if(towerMenuSelected > -1) clicked = true;
         if(pos.intersects(minusTowerRect)) { //Minustower
             uint cost = minusTowerCost;
             if(chosenTiles.size()) {
@@ -4842,6 +5207,7 @@ void FrmMain::towerMenuClicked(QRect pos)
                 buyMinusTower(towerMenu);
             } else {
                 towerMenuSelected = 1;
+                clicked = true;
             }
         } else if(pos.intersects(favTowerRect)) { //Favoritentower
             uint cost = herzTowerCost;
@@ -4853,6 +5219,7 @@ void FrmMain::towerMenuClicked(QRect pos)
                 buyFavTower(towerMenu);
             } else {
                 towerMenuSelected = 2;
+                clicked = true;
             }
         } else if(pos.intersects(repostTowerRect) && !shop->towerPrices[TOWER_REPOST-1]) { //Reposttower
             uint cost = repostTowerCost;
@@ -4864,6 +5231,7 @@ void FrmMain::towerMenuClicked(QRect pos)
                 buyRepostTower(towerMenu);
             } else {
                 towerMenuSelected = 3;
+                clicked = true;
             }
         } else if(pos.intersects(benisTowerRect) && !shop->towerPrices[TOWER_BENIS-1]) { //Benistower
             uint cost = benisTowerCost;
@@ -4875,6 +5243,7 @@ void FrmMain::towerMenuClicked(QRect pos)
                 buyBenisTower(towerMenu);
             } else {
                 towerMenuSelected = 4;
+                clicked = true;
             }
         } else if(pos.intersects(banTowerRect) && !shop->towerPrices[TOWER_BAN-1]) { //Bantower
             uint cost = banTowerCost;
@@ -4885,7 +5254,16 @@ void FrmMain::towerMenuClicked(QRect pos)
                 buy = true;
                 buyBanTower(towerMenu);
             } else {
-                towerMenuSelected = 5;
+                int tcount = 0;
+                for(uint i = 0; i < towers.size(); i++) {
+                    if(towers[i]->type == TOWER_BAN) tcount++;
+                }
+                if(tcount <= 9) {
+                    towerMenuSelected = 5;
+                } else {
+                    QMessageBox::information(this, "Info", "Du kannst nicht mehr Banntower bauen!");
+                }
+                clicked = true;
             }
         } else if(pos.intersects(sniperTowerRect) && !shop->towerPrices[TOWER_SNIPER-1]) { //Snipertower
             uint cost = sniperTowerCost;
@@ -4897,6 +5275,7 @@ void FrmMain::towerMenuClicked(QRect pos)
                 buySniperTower(towerMenu);
             } else {
                 towerMenuSelected = 6;
+                clicked = true;
             }
         } else if(pos.intersects(flakTowerRect) && !shop->towerPrices[TOWER_FLAK-1]) { //Flaktower
             uint cost = flakTowerCost;
@@ -4908,6 +5287,7 @@ void FrmMain::towerMenuClicked(QRect pos)
                 buyFlakTower(towerMenu);
             } else {
                 towerMenuSelected = 7;
+                clicked = true;
             }
         } else if(pos.intersects(laserTowerRect) && !shop->towerPrices[TOWER_LASER-1]) {
             uint cost = laserTowerCost;
@@ -4919,6 +5299,7 @@ void FrmMain::towerMenuClicked(QRect pos)
                 buyLaserTower(towerMenu);
             } else {
                 towerMenuSelected = 8;
+                clicked = true;
             }
         } else if(pos.intersects(poisonTowerRect) && !shop->towerPrices[TOWER_POISON-1]) {
             uint cost = poisonTowerCost;
@@ -4930,6 +5311,7 @@ void FrmMain::towerMenuClicked(QRect pos)
                 buyPoisonTower(towerMenu);
             } else {
                 towerMenuSelected = 9;
+                clicked = true;
             }
         } else if(pos.intersects(minigunTowerRect) && !shop->towerPrices[TOWER_MINIGUN-1]) {
             uint cost = minigunTowerCost;
@@ -4941,6 +5323,7 @@ void FrmMain::towerMenuClicked(QRect pos)
                 buyMinigunTower(towerMenu);
             } else {
                 towerMenuSelected = 10;
+                clicked = true;
             }
         }
         if(buy) {
@@ -4948,6 +5331,44 @@ void FrmMain::towerMenuClicked(QRect pos)
             shake(10, 0, 3);
             statistics->towersBuilt++;
             statistics->towersBuilt += chosenTiles.size();
+        } else if(!buy && clicked){
+            if(towerMenuSelected > -1 && playingMode == MODE_MAZE) {
+                mutex.lock();
+
+                tempPath.path.resize(0);
+                std::vector <Tile> tempTiles;
+                for(uint i = 0; i < tiles.size(); i++) {
+                    Tile tmp;
+                    tmp.type = tiles[i]->type;
+                    tempTiles.push_back(tmp);
+                }
+                tiles[towerMenu]->type = TILE_TOWER;
+                if(chosenTiles.size()) {
+                    for(uint i = 0; i < chosenTiles.size(); i++) {
+                        tiles[chosenTiles[i]]->type = TILE_TOWER;
+                    }
+                }
+                int code = createMazePath(true);
+                for(uint i = 0; i < tiles.size(); i++) {
+                    tiles[i]->type = tempTiles[i].type;
+                }
+
+                mutex.unlock();
+                if(code != 0) {
+                    tempPath.path.resize(0);
+                    towerMenuSelected = -1;
+                    QMessageBox::information(this, "Info", "Bauen unmöglich.\n"
+                                                           "Weg blockiert!");
+                } else {
+                    bool ok = false;
+                    for(uint i = 0; i < enemys.size(); i++) {
+                        if(!tempPath.contains(enemys[i]->cpos)) {
+                            ok = true;
+                        }
+                    }
+                    if(ok) enemyWarning = true;
+                }
+            }
         }
     }
 }
@@ -4964,6 +5385,13 @@ void FrmMain::editorMenuClicked(QRect pos)
         playClicked();
     } else if(pos.intersects(menuDelRect)) {
         delClicked();
+    } else if(pos.intersects(playingModeRect)) {
+        //shop check einbauen
+#ifdef QT_DEBUG
+        if(playingMode == MODE_NORMAL) {
+            playingMode = MODE_MAZE;
+        } else playingMode = MODE_NORMAL;
+#endif
     } else { //usermap auswahl
         for(uint i=3;i<levels.size();i++) {
             if(pos.intersects(levels[i].levelRect)) {
@@ -4986,12 +5414,45 @@ void FrmMain::startMenuClicked(QRect pos)
         //subActiveSelected = 3;
     } else if(pos.intersects(menuDelRect)) {
         playClicked();
-    } else {
-        for(uint i = 0; i < mainLevels; i++) {
-            if(pos.intersects(mainLvlRects[i]) && !lvlPrices[i]) {
-                subLevelSelected = i+4;
-            }
+    } else if(pos.intersects(playingModeRect)) {
+        if(playingMode == MODE_NORMAL) {
+            playingMode = MODE_MAZE;
+        } else {
+            playingMode = MODE_NORMAL;
         }
+    } else {
+        bool clicked = false;
+        switch(subActiveSelected) {
+        case 1: //levels
+            if(playingMode == MODE_NORMAL) {
+                for(uint i = 0; i < mainLevels; i++) {
+                    if(pos.intersects(mainLvlRects[i]) && !lvlPrices[i]) {
+                        subLevelSelected = i+4;
+                        clicked = true;
+                        break;
+                    }
+                }
+            } else if(playingMode == MODE_MAZE) {
+                for(uint i = 0; i < mazeLevels; i++) {
+                    if(pos.intersects(mainLvlRects[i]) && !shop->mazelvlPrices[i]) {
+                        subLevelSelected = i+4;
+                        clicked = true;
+                        break;
+                    }
+                }
+            }
+            break;
+        case 2: //eigene
+            for(uint i=3;i<levels.size();i++) {
+                if(pos.intersects(levels[i].levelRect)) {
+                    subLevelSelected = i+1;
+                    clicked = true;
+                    break;
+                }
+            }
+            break;
+        }
+        if(!clicked) subLevelSelected = 0;
     }
 }
 
@@ -5159,16 +5620,29 @@ void FrmMain::editorClicked(QRect pos, QRect aPos)
     } else if(pos.intersects(mClearRect)) {
         editorSelected = 6;
         isEditorMenuClicked = true;
+    } else if(pos.intersects(mWaypointRect)) {
+        editorSelected = 7;
+        isEditorMenuClicked = true;
     } else if(pos.intersects(mPlayRect)) {
         isEditorMenuClicked = true;
         if(!mapPlaying) {
-            mCompileError = createPath();
+            if(playingMode == MODE_NORMAL) {
+                mCompileError = createPath();
+            } else if(playingMode == MODE_MAZE) {
+                if(!waypoints.size()) {
+                    //waypoint array beim laden erstellen
+                    mCompileError = -3;
+                } else mCompileError = createMazePath();
+            }
             switch (mCompileError) {
             case -1:
-                QMessageBox::information(this,"Fehler","Kein Start gefunden!");
+                QMessageBox::information(this, "Fehler", "Kein Start gefunden!");
                 break;
             case -2:
-                QMessageBox::information(this,"Fehler","Kein Ziel gefunden!");
+                QMessageBox::information(this, "Fehler", "Kein Ziel gefunden!");
+                break;
+            case -3:
+                QMessageBox::information(this, "Fehler", "Es muss mindestens 1 Wegpunkt existieren!");
                 break;
             default: //alles ok
                 bool ok=false;
@@ -5178,7 +5652,7 @@ void FrmMain::editorClicked(QRect pos, QRect aPos)
                         break;
                     }
                 }
-                if(ok) {
+                if(ok || playingMode == MODE_MAZE) {
                     mapPlaying = true;
                 } else {
                     QMessageBox::information(this,"Fehler","Es muss mindestens 1 Turmplatz vorhanden sein!");
@@ -5272,16 +5746,28 @@ void FrmMain::editorClicked(QRect pos, QRect aPos)
         if(mapPlaying || !editMode || isEditorMenuClicked) return;
         for(uint i=0;i<tiles.size();i++) {
             if(aPos.intersects(tiles[i]->rect())) {
-                if(editorSelected==5) {
+                if(editorSelected == 5 && tiles[i]->type != editorSelected) {
                     if(!ownBaseCount) {
                         ownBaseCount++;
                         tiles[i]->type = editorSelected;
                     }
-                } else if(editorSelected==4) {
-                    //if(!enemyBaseCount) {
+                } else if(editorSelected == 4 && tiles[i]->type != editorSelected) {
+                    if((!enemyBaseCount && playingMode == MODE_MAZE) ||
+                            playingMode == MODE_NORMAL) {
                         enemyBaseCount++;
                         tiles[i]->type = editorSelected;
-                    //}
+                    }
+                } else if(editorSelected == 7) {
+                    if(tiles[i]->type >= TILE_WAYP) {
+                        for(uint a = 0; a < waypoints.size(); a++) {
+                            tiles[waypoints[a]]->type = TILE_GRAS;
+                        }
+                        waypoints.resize(0);
+                    } else {
+                        int count = 100 + waypoints.size();
+                        tiles[i]->type = count;
+                        waypoints.push_back(i);
+                    }
                 } else if(editorSelected) {
                     if(tiles[i]->type==5) ownBaseCount--;
                     if(tiles[i]->type==4) enemyBaseCount--;
@@ -5450,8 +5936,6 @@ void FrmMain::loadMap(QString name, int custom, int width, int height, QString p
         this->paths = levels[subLevelSelected-1].paths;
     }
     viewRect = QRect(0,0,mapwidth,mapheight);
-    mapPx = createMapImage(custom);
-    mapPx_gras = createMapImage(2);
 #ifdef QT_DEBUG
     QFile file;
     QString path = QStandardPaths::writableLocation(QStandardPaths::DataLocation);
@@ -5461,7 +5945,15 @@ void FrmMain::loadMap(QString name, int custom, int width, int height, QString p
     mapPx.save(&file);
     file.close();
 #endif
-    createPathBoundaries();
+    if(playingMode == MODE_MAZE && moveAn == ANIMATION_PLAY) {
+        createMazePath();
+    }
+
+    if(moveAn != ANIMATION_CONTINUE) {
+        createPathBoundaries();
+        mapPx = createMapImage(custom);
+        mapPx_gras = createMapImage(2);
+    }
     mapLoaded = true;
 }
 
@@ -5483,6 +5975,10 @@ void FrmMain::loadLevels()
     }
     for(uint i=0;i<mainLevels;i++) {
         lvlPreviews.push_back(QPixmap(":/data/images/maps/map"+QString::number(i)+".png"));
+    }
+    for(uint i=0;i<mazeLevels;i++) {
+        mazelvlPreviews.push_back(QPixmap(":/data/images/maps/maze/map"+QString::number(i)+".png"));
+        shop->mazelvlPreviews = mazelvlPreviews;
     }
     int y=1;
     int a=0;
@@ -5558,11 +6054,17 @@ void FrmMain::loadGameSave()
         //Map laden
         switch(split[1].toInt()) {
         case 0: //standardlevel
+            playingMode = MODE_NORMAL;
             loadMap(split[2], 0, 0, 0, ":/data/maps/", mapversion.toDouble());
             break;
         case 1: //userlevel
+            playingMode = MODE_NORMAL;
             subLevelSelected = split[2].toInt();
             loadMap("",2);
+            break;
+        case 2: //mazelevel
+            playingMode = MODE_MAZE;
+            loadMap(split[2], 0, 0, 0, ":/data/maps/", mapversion.toDouble());
             break;
         }
         //Türme laden
@@ -5635,6 +6137,7 @@ void FrmMain::loadGameSave()
             }
             addTowerTargets(t);
             towers.push_back(t);
+            tiles[data[3].toInt()]->type = TILE_TOWER;
             tiles[data[3].toInt()]->t = t;
         }
         //Gegner laden
@@ -5750,6 +6253,16 @@ void FrmMain::loadGameSave()
         currentWave.waveTime = waveSplit[12].toInt();
         //------
         //Allgemeines Zeugs laden
+        if(playingMode == MODE_MAZE) {
+            createMazePath();
+        } else {
+            createPath();
+        }
+        createPathBoundaries();
+
+        mapPx = createMapImage(0);
+        mapPx_gras = createMapImage(2);
+
         setBenis(split[7].toULongLong(), true);
         this->internalWaveCount = split[9].toInt();
         int am = split[10].toInt();
@@ -5793,10 +6306,15 @@ void FrmMain::saveGameSave()
     file.open(QIODevice::WriteOnly|QIODevice::Truncate);
     QTextStream out(&file);
     int t = 0;
+    if(playingMode == MODE_MAZE) {
+        t = 2;
+    }
     out << QString::number(version) << "#";
-    if(mName=="") t = 1;
+    if(mName=="") {
+        t = 1;
+    }
     out << QString::number(t) << "#";
-    if(t) {
+    if(t == 1) {
         out << QString::number(subLevelSelected) << "#";
     } else {
         out << mName << "#";
@@ -5922,6 +6440,11 @@ void FrmMain::saveOptions(unsigned long long customShekel, bool init)
         data = data + QString::number(lvlPrices[i]) + "#";
     }
     data.remove(data.size()-1, 1);
+    data += '|';
+    for(uint i = 0; i < shop->mazelvlPrices.size(); i++) {
+        data = data + QString::number(shop->mazelvlPrices[i]) + "#";
+    }
+    data.remove(data.size()-1, 1);
     out << data;
     file.close();
 
@@ -5961,6 +6484,8 @@ void FrmMain::loadGraphics()
     shop->loadGraphics();
     settings->loadGraphics();
     statistics->loadGraphics();
+    playingModeNormal = QPixmap(":/data/images/normal.png");
+    playingModeMaze = QPixmap(":/data/images/maze.png");
     repairPx = QPixmap(":/data/images/repair.png");
     repairPx_grau = QPixmap(":/data/images/ui/deaktiviert/repair.png");
     bossPx = QPixmap(":/data/images/enemys/boss/Boss1.png");
@@ -6041,6 +6566,7 @@ void FrmMain::loadGraphics()
     questionPx = QPixmap(":/data/images/qmark.png");
     popupPx = QPixmap(":/data/images/ui/speed3_popup.png");
     statsPx = QPixmap(":/data/images/stats.png");
+    waveBreakPx = QPixmap(":/data/images/ui/waveBreak.png");
 
     levelsPx = QPixmap(":/data/images/levels.png");
     ownMapsPx = QPixmap(":/data/images/eigene.png");
@@ -6053,6 +6579,9 @@ void FrmMain::loadGraphics()
     mStopPx = QPixmap(":/data/images/ui/mstop.png");
     mSavePx = QPixmap(":/data/images/ui/msave.png");
     mEditPx = QPixmap(":/data/images/ui/edit.png");
+
+    towerMenuOpenPx = QPixmap(":/data/images/ui/towermenu/show.png");
+    towerMenuClosePx = QPixmap(":/data/images/ui/towermenu/hide.png");
 
     for(uint i = 0; i < 4; i++) {
         grasAnimation.push_back(QPixmap(":/data/images/Gras/gras"+QString::number(i)+".png"));
@@ -6170,9 +6699,30 @@ void FrmMain::loadOptions()
         QString data = in.readAll();
         data.remove("\r\n");
         if(data.size()) {
-            QStringList split = data.split("#");
-            for(int i = 0; i < split.size(); i++) {
-                lvlPrices.push_back(split[i].toInt());
+            if(data.contains('|')) {
+                QStringList lvlsplit = data.split("|");
+                QString normal = lvlsplit[0];
+                QString maze = lvlsplit[1];
+
+                QStringList normalSplit = normal.split("#");
+                for(int i = 0; i < normalSplit.size(); i++) {
+                    lvlPrices.push_back(normalSplit[i].toInt());
+                }
+
+                QStringList mazeSplit = maze.split("#");
+                for(int i = 0; i < mazeSplit.size(); i++) {
+                    shop->mazelvlPrices.push_back(mazeSplit[i].toInt());
+                }
+            } else {
+                QStringList split = data.split("#");
+                for(int i = 0; i < split.size(); i++) {
+                    lvlPrices.push_back(split[i].toInt());
+                }
+
+                shop->mazelvlPrices.push_back(0);
+                shop->mazelvlPrices.push_back(500);
+                shop->mazelvlPrices.push_back(750);
+                shop->mazelvlPrices.push_back(1500);
             }
             ok = true;
         }
@@ -6306,6 +6856,8 @@ int FrmMain::createPath()
     begin = -1;
     std::vector <int> starts;
     int maxX = mapwidth/80;
+    int maxY = mapheight/80;
+
     for(uint i=0;i<tiles.size();i++) {
         if(tiles[i]->type==4) { //spawn
             starts.push_back(i);
@@ -6314,118 +6866,195 @@ int FrmMain::createPath()
     if(!starts.size()) {
         return -1; //kein start
     }
+
+    int end = -1;
+    for(uint a = 0; a < tiles.size(); a++) {
+        if(tiles[a]->type == 5) {
+            end = a;
+            break;
+        }
+    }
+
+    if(end == -1) return -2;
+
     for(uint i=0;i<starts.size();i++) {
         Path tmpPath;
-        int begin = starts[i];
-        tmpPath.path.push_back(begin);
-        bool end=false;
-        int last=-1;
-        int current = begin;
-        int tSize = tiles.size();
-        while(!end) {
-            int next;
-            int ok = 0;
-            next = current+1; //nach rechts
-            if(next>-1&&next!=last&&next<tSize&&
-                    ((next/maxX)==(current/maxX))) {
-                if(tiles[next]->type==1) {
-                    ok = 1;
-                } else if(tiles[next]->type==5) {
-                    ok = 2;
+        int beginX = tiles[starts[i]]->rect().x()/80;
+        int beginY = tiles[starts[i]]->rect().y()/80;
+        int endX = 0;
+        int endY = 0;
+
+        if(end > -1) {
+            endX = tiles[end]->rect().x()/80;
+            endY = tiles[end]->rect().y()/80;
+            astar.destroyMatrix();
+            astar.setMatrix(maxX, maxY);
+            astar.setStart(beginX, beginY);
+            astar.setEnd(endX, endY);
+
+            for(uint a = 0; a < tiles.size(); a++) {
+                int x = tiles[a]->rect().x()/80;
+                int y = tiles[a]->rect().y()/80;
+
+                switch(tiles[a]->type) {
+                case TILE_SPAWN:
+                case TILE_BASE:
+                    break;
+                case TILE_PATH: //weg
+                case TILE_ART13: //art13
+                    astar.setWay(x,y);
+                    astar.setExpandCost(1,x,y);
+                    break;
+                default:
+                    astar.setWall(x,y);
+                    break;
                 }
             }
-            if(ok) { //nach rechts bestätigt
-                tmpPath.path.push_back(next);
-                last = current;
-                current = next;
-                if(ok==2) {
-                    end = true;
-                }
-            } else {
-                next = current+maxX; //nach unten
-                if(next>-1&&next!=last&&next<tSize) {
-                    if(tiles[next]->type==1) {
-                        ok = 1;
-                    } else if(tiles[next]->type==5) {
-                        ok = 2;
-                    }
-                }
-                if(ok) { //nach unten bestätigt
-                    tmpPath.path.push_back(next);
-                    last = current;
-                    current = next;
-                    if(ok==2) {
-                        end = true;
-                    }
-                } else {
-                    next = current-1;
-                    if(next>-1&&next!=last&&next<tSize&&
-                            ((next/maxX)==(current/maxX))) {
-                        if(tiles[next]->type==1) {
-                            ok = 1;
-                        } else if(tiles[next]->type==5) {
-                            ok = 2;
-                        }
-                    }
-                    if(ok) { //nach links bestätigt
-                        tmpPath.path.push_back(next);
-                        last = current;
-                        current = next;
-                        if(ok==2) {
-                            end = true;
-                        }
-                    } else {
-                        next = current-maxX;
-                        if(next>-1&&next!=last&&next<tSize) {
-                            if(tiles[next]->type==1) {
-                                ok = 1;
-                            } else if(tiles[next]->type==5) {
-                                ok = 2;
-                            }
-                        }
-                        if(ok) {
-                            tmpPath.path.push_back(next);
-                            last = current;
-                            current = next;
-                            if(ok==2) {
-                                end=true;
-                            }
-                        } else {
-                            end=true;
-                        }
-                    }
-                }
+
+            list<pair<UINT, UINT> > aStarPath;
+            list<pair<UINT, UINT> >::iterator pathIt;
+
+            aStarPath = astar.getPath();
+            tmpPath.path.push_back(starts[i]);
+            for(pathIt = aStarPath.begin(); pathIt != aStarPath.end(); pathIt++) {
+                int tpos = pathIt->first + (pathIt->second * mapwidth/80);
+                tmpPath.path.push_back(tpos);
             }
-            if(tmpPath.path.size()>tiles.size()) {
-                return -2; //kein weg gefunden
-            }
-            if(paths.size()) {
-                for(uint a=0;a<paths.size();a++) {
-                    Path p = paths[a];
-                    bool take=false;
-                    for(uint b=0;b<p.path.size();b++) {
-                        if(take) {
-                            tmpPath.path.push_back(p.path[b]);
-                        }
-                        if(p.path[b]==tmpPath.path.back()) {
-                            //pfad bereits vorhanden -> übernehmen
-                            take = true;
-                        }
-                    }
-                    if(take) {
-                        end = true;
-                        break;
-                    }
-                }
-            }
+
         }
+
         if(tiles[tmpPath.path[tmpPath.path.size()-1]]->type!=5) {
-            return -2; //start = ziel
+            return -2; //start = ziel od kein weg gefunden
         }
+
         paths.push_back(tmpPath);
     }
     return 0; //alles ok
     //path.erase(path.begin()+path.size()-1);
+}
+
+int FrmMain::createMazePath(bool tmp)
+{
+    if(!tmp) {
+        paths.resize(0);
+    }
+    waypoints.resize(0);
+    begin = -1;
+    int start = -1;
+    int maxX = mapwidth/80;
+    int maxY = mapheight/80;
+
+    for(uint i=0;i<tiles.size();i++) {
+        if(tiles[i]->type==4) { //spawn
+            start = i;
+            break;
+        }
+    }
+    if(start < 0) {
+        return -1; //kein start
+    }
+
+    int end = -1;
+    for(uint a = 0; a < tiles.size(); a++) {
+        if(tiles[a]->type == 5) {
+            end = a;
+            break;
+        }
+    }
+
+    int mend = end;
+    if(end == -1) return -2;
+
+    for(uint i = 0; i < tiles.size(); i++) {
+        if(tiles[i]->type >= TILE_WAYP) {
+            waypoints.push_back(i);
+        }
+    }
+    end = waypoints[0];
+    //sortiert wegpunkte von klein nach groß
+    if(waypoints.size() > 1) {
+        std::sort(waypoints.begin(), waypoints.end());
+    }
+
+    Path tmpPath;
+    int beginX = tiles[start]->rect().x()/80;
+    int beginY = tiles[start]->rect().y()/80;
+    int endX = 0;
+    int endY = 0;
+
+    tmpPath.path.push_back(start);
+
+    for(int i = -1; i < (int)waypoints.size(); i++) {
+        if(i > -1) {
+            start = waypoints[i];
+            beginX = tiles[start]->rect().x()/80;
+            beginY = tiles[start]->rect().y()/80;
+        }
+
+        if(i+1 < (int)waypoints.size()) {
+            end = waypoints[i+1];
+        } else {
+            end = mend;
+        }
+
+        if(end > -1) {
+            endX = tiles[end]->rect().x()/80;
+            endY = tiles[end]->rect().y()/80;
+            astar.destroyMatrix();
+            astar.setMatrix(maxX, maxY);
+            astar.setStart(beginX, beginY);
+            astar.setEnd(endX, endY);
+
+            for(uint a = 0; a < tiles.size(); a++) {
+                int x = tiles[a]->rect().x()/80;
+                int y = tiles[a]->rect().y()/80;
+
+                switch(tiles[a]->type) {
+                case TILE_SPAWN:
+                case TILE_BASE:
+                    break;
+                case TILE_PATH: //weg
+                case TILE_ART13: //art13
+                    if(tmpPath.contains(a)) {
+                        astar.setWall(x,y);
+                    } else {
+                        astar.setWay(x,y);
+                        astar.setExpandCost(1,x,y);
+                    }
+                    break;
+                default:
+                    if(tiles[a]->type < TILE_WAYP) {
+                        astar.setWall(x,y);
+                    }
+                    break;
+                }
+            }
+
+            list<pair<UINT, UINT> > aStarPath;
+            list<pair<UINT, UINT> >::iterator pathIt;
+
+            aStarPath = astar.getPath();
+            for(pathIt = aStarPath.begin(); pathIt != aStarPath.end(); pathIt++) {
+                int tpos = pathIt->first + (pathIt->second * mapwidth/80);
+                tmpPath.path.push_back(tpos);
+            }
+
+        }
+        if(tiles[tmpPath.path[tmpPath.path.size()-1]]->type < TILE_WAYP && i+1 < (int)waypoints.size()) {
+            return -2;
+        }
+    }
+
+    if(tiles[tmpPath.path[tmpPath.path.size()-1]]->type!=5) {
+        return -2; //start = ziel od kein weg gefunden
+    }
+
+    if(!tmp) {
+        paths.push_back(tmpPath);
+    } else {
+        tempPath.path = tmpPath.path;
+    }
+    return 0; //alles ok
 }
 
 void FrmMain::zoom(double amount)
@@ -6493,10 +7122,10 @@ void FrmMain::createPathBoundaries()
             uint currentTile = (uint)currentPath.path[a];
             QRect tmp = tiles[currentTile]->rect();
             tmp.adjust(-2,-2,2,2);
+
             for(uint b = 0; b < tiles.size(); b++) {
-                if(b != currentTile) {
-                    if(tiles[b]->type != 1 &&
-                            tiles[b]->type != 4 &&
+                if(!pathsContains(b) && b != currentTile) {
+                    if(tiles[b]->type != 4 &&
                             tiles[b]->type != 5) {
                         if(tiles[b]->rect().intersects(tmp)) {
                             checkPush(tiles[b]);
@@ -6576,7 +7205,7 @@ void FrmMain::createAccount()
                 bool pwok = true;
                 if(password.size() < 3 || password.size() > 20) pwok = false;
                 for(int i = 0; i < password.size(); i++) {
-                    if(!password[i].isLetter()&&!password[i].isDigit()) {
+                    if(!password[i].isLetter() && !password[i].isDigit()) {
                         pwok = false;
                     }
                 }
@@ -6593,7 +7222,7 @@ void FrmMain::createAccount()
                         QMessageBox::information(this,"Fehler","Server nicht erreichbar! Bitte versuche es später noch einmal!");
                     }
                 } else {
-                    accountCreationError();
+                    accountCreationError(1);
                 }
             } else if(!ok){ //Name verwendet
                 QMessageBox::information(this,"Fehler","Name bereits verwendet! Versuche es nochmal!");
@@ -6603,7 +7232,7 @@ void FrmMain::createAccount()
         } else {
             accountCreationError();
         }
-    } else accountCreationError();
+    } else accountCreationError(2);
 }
 
 void FrmMain::saveAccount()
@@ -6618,11 +7247,22 @@ void FrmMain::saveAccount()
     file.close();
 }
 
-void FrmMain::accountCreationError()
+void FrmMain::accountCreationError(int id)
 {
-    QMessageBox::information(this, "Info", "<b>Irgendwas ist schiefgelaufen!</b><br>"
-                                           "Klicke auf das Accountsymbol,<br>"
-                                           "um es erneut zu probieren!");
+    QString text = "<b>ZOMG!</b><br>"
+                   "Klicke auf das Accountsymbol,<br>"
+                   "um es erneut zu probieren!";
+    switch(id) {
+    case 1:
+        text = "<b>ZOMG!</b><br>"
+                "Dein Passwort entspricht nicht den Anforderungen!";
+        break;
+    case 2:
+        text = "<b>ZOMG!</b><br>"
+                "Dein Benutzername entspricht nicht den Anforderungen!";
+        break;
+    }
+    QMessageBox::information(this, "Info", text);
 }
 
 bool FrmMain::event(QEvent *e)
@@ -6745,7 +7385,7 @@ void FrmMain::mouseMoveEvent(QMouseEvent *e)
     if(active == STATE_MAINMENU || (gamePaused&&backMenu) || isGameOver) return;
     int x = e->pos().x();
     int y = e->pos().y();
-    if(towerMenu != -1) {
+    if(towerMenu > -1 && !towerMenuHidden) {
         if(QRect(mPos.x()/scaleFHDX,mPos.y()/scaleFHDY,1,1).intersects(towerMenuRect)) return;
     }
     QPoint nPos(x,y);
@@ -7007,7 +7647,17 @@ void FrmMain::mouseReleaseEvent(QMouseEvent *e)
         break;
     case STATE_PLAYING: //ingame
         bool hudClicked = false;
-        if(mRectRaw.intersects(wandRect) && shop->items[1].count > 0) {
+        if(mRectRaw.intersects(towerMenuCloseRect) && towerMenu > -1 && !towerMenuHidden) {
+            towerMenuHidden = true;
+            towerMenuAnimating = towerMenu;
+            towerMenuAnimatingDir = 1; //schließen
+            hudClicked = true;
+        } else if(mRectRaw.intersects(towerMenuOpenRect) && towerMenu > -1 && towerMenuHidden) {
+            towerMenuHidden = false;
+            towerMenuAnimating = towerMenu;
+            towerMenuAnimatingDir = 0; //öffnen
+            hudClicked = true;
+        } else if(mRectRaw.intersects(wandRect) && shop->items[1].count > 0) {
             powerupSelected = 1;
             hudClicked = true;
         } else if(mRectRaw.intersects(btnZoomMinusRect) && settings->zoomMode == 1) {
@@ -7036,19 +7686,40 @@ void FrmMain::mouseReleaseEvent(QMouseEvent *e)
             hudClicked = true;
         } else if(mRectRaw.intersects(btnPlayingSpeedRect) && !playingSpeedChanged) {
             //qDebug()<<enemys.size();
-            switch(playingSpeed) {
-            case 1: //normal
-                do {
-                    QMetaObject::invokeMethod(t_projectile_full,"start",Q_ARG(int,25));
-                    QMetaObject::invokeMethod(t_projectile,"start",Q_ARG(int,5));
-                    QMetaObject::invokeMethod(t_main,"start",Q_ARG(int,5));
-                    QMetaObject::invokeMethod(t_wave,"start",Q_ARG(int,50));
-                    QMetaObject::invokeMethod(t_grasAn,"start",Q_ARG(int,250));
-                } while(!checkTimers());
-                playingSpeed = 2;
-                break;
-            case 2: //schnell
-                if(!superfastUnlocked) {
+            if(!waveBreak) {
+                switch(playingSpeed) {
+                case 1: //normal
+                    do {
+                        QMetaObject::invokeMethod(t_projectile_full,"start",Q_ARG(int,25));
+                        QMetaObject::invokeMethod(t_projectile,"start",Q_ARG(int,5));
+                        QMetaObject::invokeMethod(t_main,"start",Q_ARG(int,5));
+                        QMetaObject::invokeMethod(t_wave,"start",Q_ARG(int,50));
+                        QMetaObject::invokeMethod(t_grasAn,"start",Q_ARG(int,250));
+                    } while(!checkTimers());
+                    playingSpeed = 2;
+                    break;
+                case 2: //schnell
+                    if(!superfastUnlocked) {
+                        do {
+                            QMetaObject::invokeMethod(t_projectile_full,"start",Q_ARG(int,50));
+                            QMetaObject::invokeMethod(t_projectile,"start",Q_ARG(int,10));
+                            QMetaObject::invokeMethod(t_main,"start",Q_ARG(int,10));
+                            QMetaObject::invokeMethod(t_wave,"start",Q_ARG(int,100));
+                            QMetaObject::invokeMethod(t_grasAn,"start",Q_ARG(int,500));
+                        } while(!checkTimers());
+                        playingSpeed = 1;
+                    } else {
+                        do {
+                            QMetaObject::invokeMethod(t_projectile_full,"start",Q_ARG(int,12));
+                            QMetaObject::invokeMethod(t_projectile,"start",Q_ARG(int,2));
+                            QMetaObject::invokeMethod(t_main,"start",Q_ARG(int,2));
+                            QMetaObject::invokeMethod(t_wave,"start",Q_ARG(int,25));
+                            QMetaObject::invokeMethod(t_grasAn,"start",Q_ARG(int,125));
+                        } while(!checkTimers());
+                        playingSpeed = 3;
+                    }
+                    break;
+                case 3: //superschnell
                     do {
                         QMetaObject::invokeMethod(t_projectile_full,"start",Q_ARG(int,50));
                         QMetaObject::invokeMethod(t_projectile,"start",Q_ARG(int,10));
@@ -7057,33 +7728,16 @@ void FrmMain::mouseReleaseEvent(QMouseEvent *e)
                         QMetaObject::invokeMethod(t_grasAn,"start",Q_ARG(int,500));
                     } while(!checkTimers());
                     playingSpeed = 1;
-                } else {
-                    do {
-                        QMetaObject::invokeMethod(t_projectile_full,"start",Q_ARG(int,12));
-                        QMetaObject::invokeMethod(t_projectile,"start",Q_ARG(int,2));
-                        QMetaObject::invokeMethod(t_main,"start",Q_ARG(int,2));
-                        QMetaObject::invokeMethod(t_wave,"start",Q_ARG(int,25));
-                        QMetaObject::invokeMethod(t_grasAn,"start",Q_ARG(int,125));
-                    } while(!checkTimers());
-                    playingSpeed = 3;
+                    break;
                 }
-                break;
-            case 3: //superschnell
-                do {
-                    QMetaObject::invokeMethod(t_projectile_full,"start",Q_ARG(int,50));
-                    QMetaObject::invokeMethod(t_projectile,"start",Q_ARG(int,10));
-                    QMetaObject::invokeMethod(t_main,"start",Q_ARG(int,10));
-                    QMetaObject::invokeMethod(t_wave,"start",Q_ARG(int,100));
-                    QMetaObject::invokeMethod(t_grasAn,"start",Q_ARG(int,500));
-                } while(!checkTimers());
-                playingSpeed = 1;
-                break;
+            } else {
+                if(waveBreak) waveBreak = 0;
             }
             hudClicked = true;
         }
 
         //6 max towermenuselected
-        if(towerMenu > -1) {
+        if(towerMenu > -1 && !towerMenuHidden) {
             //warum nicht in towermenuclicked()? -> wird erst später aufgerufen
             Tower *tmpTower = tiles[towerMenu]->t;
             if(tmpTower != nullptr) {
@@ -7145,15 +7799,17 @@ void FrmMain::mouseReleaseEvent(QMouseEvent *e)
             }
         }
 
-        if(!hudClicked && ((towerMenu==-1 || (!mRectRaw.intersects(towerMenuRect) &&
+        if(!hudClicked && (towerMenu == -1 || (!mRectRaw.intersects(towerMenuRect) &&
                   !QRect(mPos.x()/scaleFHDX, mPos.y()/scaleFHDY, 1, 1).intersects(towerMenuRect) &&
-                  towerMenuAnimating == -1)))) {
-            if(!mRectRaw.intersects(towerMenuRect) && towerMenu >- 1) {
+                  towerMenuAnimating == -1) || (towerMenuHidden))) {
+
+            if((!mRectRaw.intersects(towerMenuRect) || towerMenuHidden) && towerMenu >- 1) {
                 towerMenuSelected = 0;
                 bool ok = false;
                 for(uint i = 0; i < tiles.size(); i++) {
                     if(mRect.intersects(tiles[i]->rect())) {
-                        if(tiles[i]->type == 2 &&
+                        if(((tiles[i]->type == 2 && playingMode == MODE_NORMAL) ||
+                            ((tiles[i]->type == 1 || tiles[i]->type == 2) && playingMode == MODE_MAZE)) &&
                                 (int)i != towerMenu) {//turm
                             if(tiles[i]->t == nullptr &&
                                     tiles[towerMenu]->t == nullptr) {
@@ -7169,6 +7825,7 @@ void FrmMain::mouseReleaseEvent(QMouseEvent *e)
                                     }
                                 }
                             } else {
+                                //wenn turm dann range anzeigen
                                 ok = true;
                                 chosenTiles.resize(0);
                                 if((int)i != towerMenu) {
@@ -7186,21 +7843,31 @@ void FrmMain::mouseReleaseEvent(QMouseEvent *e)
                     }
                     chosenTiles.resize(0);
                     towerMenu = -1;
-                    towerMenuAnimating = 0;
-                    towerMenuAnimatingDir = 1;
+                    if(playingMode == MODE_MAZE) {
+                        tempPath.path.resize(0);
+                    }
+                    if(!towerMenuHidden) {
+                        towerMenuAnimating = 0;
+                        towerMenuAnimatingDir = 1;
+                    }
                 }
             } else {
                 for(uint i=0;i<tiles.size();i++) {
                     if(mRect.intersects(tiles[i]->rect())) {
-                        if(tiles[i]->type == 2) {//turm
+                        if((tiles[i]->type == 2 && playingMode == MODE_NORMAL) ||
+                                ((tiles[i]->type == 1 || tiles[i]->type == 2) && playingMode == MODE_MAZE)) {//turm
                             if(tiles[i]->t != nullptr) {
                                 tiles[i]->t->tmpRangeDir = 0; //größer
                             }
-                            towerMenuAnimating = i;
-                            towerMenuAnimatingDir = 0;
-                            //towerMenu = i;
-                            towerMenuRectAnimation = towerMenuRect;
-                            towerMenuRectAnimation.moveTo(-600,towerMenuRectAnimation.y());
+                            if(!towerMenuHidden) {
+                                towerMenuAnimating = i;
+                                towerMenuAnimatingDir = 0;
+                                //towerMenu = i;
+                                towerMenuRectAnimation = towerMenuRect;
+                                towerMenuRectAnimation.moveTo(-600,towerMenuRectAnimation.y());
+                            } else {
+                                towerMenu = i;
+                            }
                             towerMenuSelected = 0;
                             break;
                         }
@@ -7208,8 +7875,10 @@ void FrmMain::mouseReleaseEvent(QMouseEvent *e)
                 }
             }
         } else {
-            towerMenuClicked(mRectRaw);
-            hudClicked = true;
+            if(!towerMenuHidden) {
+                towerMenuClicked(mRectRaw);
+                hudClicked = true;
+            }
         }
 
         if(!hudClicked && towerMenu == -1) {
@@ -7426,8 +8095,9 @@ void FrmMain::paintEvent(QPaintEvent *e)
                 qDebug()<<"paint-end";
             }
         }
-    } catch(std::exception e) {
 
+    } catch(std::exception& e) {
+        qDebug()<<e.what();
     }
     mutex.unlock();
 }
