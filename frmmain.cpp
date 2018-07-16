@@ -2210,11 +2210,16 @@ void FrmMain::buyMinusTower(int tpos, bool intersects)
             updatePath(tpos);
         }
     }
+
     towerMenuSelected = 0;
 }
 
-void FrmMain::buyFavTower(int tpos)
+void FrmMain::buyFavTower(int tpos, bool intersects)
 {
+    if(playingMode == MODE_MAZE) {
+        if(pathsContains(tpos)) intersects = true;
+    }
+
     setBenis(benis - herzTowerCost);
     Tower *t = new Tower();
     t->type = TOWER_HERZ;
@@ -2239,11 +2244,22 @@ void FrmMain::buyFavTower(int tpos)
         chosenTiles.erase(chosenTiles.begin());
         buyFavTower(num);
     } else t->tmpRangeDir = 0;
+
+    if(playingMode == MODE_MAZE) {
+        if(intersects) {
+            updatePath(tpos);
+        }
+    }
+
     towerMenuSelected = 0;
 }
 
-void FrmMain::buyRepostTower(int tpos)
+void FrmMain::buyRepostTower(int tpos, bool intersects)
 {
+    if(playingMode == MODE_MAZE) {
+        if(pathsContains(tpos)) intersects = true;
+    }
+
     setBenis(benis - repostTowerCost);
     Tower *t = new Tower();
     t->type = TOWER_REPOST;
@@ -2270,11 +2286,22 @@ void FrmMain::buyRepostTower(int tpos)
         chosenTiles.erase(chosenTiles.begin());
         buyRepostTower(num);
     } else t->tmpRangeDir = 0;
+
+    if(playingMode == MODE_MAZE) {
+        if(intersects) {
+            updatePath(tpos);
+        }
+    }
+
     towerMenuSelected = 0;
 }
 
-void FrmMain::buyBenisTower(int tpos)
+void FrmMain::buyBenisTower(int tpos, bool intersects)
 {
+    if(playingMode == MODE_MAZE) {
+        if(pathsContains(tpos)) intersects = true;
+    }
+
     setBenis(benis - benisTowerCost);
     Tower *t = new Tower();
     t->type = TOWER_BENIS;
@@ -2299,11 +2326,22 @@ void FrmMain::buyBenisTower(int tpos)
         chosenTiles.erase(chosenTiles.begin());
         buyBenisTower(num);
     } else t->tmpRangeDir = 0;
+
+    if(playingMode == MODE_MAZE) {
+        if(intersects) {
+            updatePath(tpos);
+        }
+    }
+
     towerMenuSelected = 0;
 }
 
-void FrmMain::buyBanTower(int tpos)
+void FrmMain::buyBanTower(int tpos, bool intersects)
 {
+    if(playingMode == MODE_MAZE) {
+        if(pathsContains(tpos)) intersects = true;
+    }
+
     setBenis(benis - banTowerCost);
     Tower *t = new Tower();
     t->type = TOWER_BAN;
@@ -2332,11 +2370,22 @@ void FrmMain::buyBanTower(int tpos)
         chosenTiles.erase(chosenTiles.begin());
         buyBanTower(num);
     } else t->tmpRangeDir = 0;
+
+    if(playingMode == MODE_MAZE) {
+        if(intersects) {
+            updatePath(tpos);
+        }
+    }
+
     towerMenuSelected = 0;
 }
 
-void FrmMain::buySniperTower(int tpos)
+void FrmMain::buySniperTower(int tpos, bool intersects)
 {
+    if(playingMode == MODE_MAZE) {
+        if(pathsContains(tpos)) intersects = true;
+    }
+
     setBenis(benis - sniperTowerCost);
     Tower *t = new Tower();
     t->type = TOWER_SNIPER;
@@ -2360,11 +2409,22 @@ void FrmMain::buySniperTower(int tpos)
         chosenTiles.erase(chosenTiles.begin());
         buySniperTower(num);
     } else t->tmpRangeDir = 0;
+
+    if(playingMode == MODE_MAZE) {
+        if(intersects) {
+            updatePath(tpos);
+        }
+    }
+
     towerMenuSelected = 0;
 }
 
-void FrmMain::buyFlakTower(int tpos)
+void FrmMain::buyFlakTower(int tpos, bool intersects)
 {
+    if(playingMode == MODE_MAZE) {
+        if(pathsContains(tpos)) intersects = true;
+    }
+
     setBenis(benis - flakTowerCost);
     Tower *t = new Tower();
     t->type = TOWER_FLAK;
@@ -2388,11 +2448,22 @@ void FrmMain::buyFlakTower(int tpos)
         chosenTiles.erase(chosenTiles.begin());
         buyFlakTower(num);
     } else t->tmpRangeDir = 0;
+
+    if(playingMode == MODE_MAZE) {
+        if(intersects) {
+            updatePath(tpos);
+        }
+    }
+
     towerMenuSelected = 0;
 }
 
-void FrmMain::buyLaserTower(int tpos)
+void FrmMain::buyLaserTower(int tpos, bool intersects)
 {
+    if(playingMode == MODE_MAZE) {
+        if(pathsContains(tpos)) intersects = true;
+    }
+
     setBenis(benis - laserTowerCost);
     Tower *t = new Tower();
     t->type = TOWER_LASER;
@@ -2417,11 +2488,22 @@ void FrmMain::buyLaserTower(int tpos)
         chosenTiles.erase(chosenTiles.begin());
         buyLaserTower(num);
     } else t->tmpRangeDir = 0;
+
+    if(playingMode == MODE_MAZE) {
+        if(intersects) {
+            updatePath(tpos);
+        }
+    }
+
     towerMenuSelected = 0;
 }
 
-void FrmMain::buyPoisonTower(int tpos)
+void FrmMain::buyPoisonTower(int tpos, bool intersects)
 {
+    if(playingMode == MODE_MAZE) {
+        if(pathsContains(tpos)) intersects = true;
+    }
+
     setBenis(benis - poisonTowerCost);
     Tower *t = new Tower();
     t->type = TOWER_POISON;
@@ -2446,11 +2528,22 @@ void FrmMain::buyPoisonTower(int tpos)
         chosenTiles.erase(chosenTiles.begin());
         buyPoisonTower(num);
     } else t->tmpRangeDir = 0;
+
+    if(playingMode == MODE_MAZE) {
+        if(intersects) {
+            updatePath(tpos);
+        }
+    }
+
     towerMenuSelected = 0;
 }
 
-void FrmMain::buyMinigunTower(int tpos)
+void FrmMain::buyMinigunTower(int tpos, bool intersects)
 {
+    if(playingMode == MODE_MAZE) {
+        if(pathsContains(tpos)) intersects = true;
+    }
+
     setBenis(benis - minigunTowerCost);
     Tower *t = new Tower();
     t->type = TOWER_MINIGUN;
@@ -2475,6 +2568,13 @@ void FrmMain::buyMinigunTower(int tpos)
         chosenTiles.erase(chosenTiles.begin());
         buyMinigunTower(num);
     } else t->tmpRangeDir = 0;
+
+    if(playingMode == MODE_MAZE) {
+        if(intersects) {
+            updatePath(tpos);
+        }
+    }
+
     towerMenuSelected = 0;
 }
 
@@ -2720,6 +2820,8 @@ int FrmMain::updatePath(int pos)
     int ret = 0;
     tiles[pos]->type = TILE_TOWER;
     mutex.lock();
+
+    if(tempPath.path.size()) tempPath.path.resize(0);
 
     for(uint i = 0; i < tiles.size(); i++) {
         if(tiles[i]->body != nullptr) {
