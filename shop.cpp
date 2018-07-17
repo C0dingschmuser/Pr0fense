@@ -27,6 +27,11 @@ Shop::Shop(QObject *parent) : QObject(parent)
     shekelPacks.push_back(6000);
     shekelPacks.push_back(15000);
 
+    mazelvlPrices.push_back(0);
+    mazelvlPrices.push_back(500);
+    mazelvlPrices.push_back(750);
+    mazelvlPrices.push_back(1500);
+
     items.push_back(Item("speed_superfast", "Schaltet 3x Geschwindigkeit frei", 0.99, 0));
     items.push_back(Item("art13", "Temporärer Uploadfilter", 250, 1, true));
     items[1].locked = false;

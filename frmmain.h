@@ -101,9 +101,9 @@ private:
 #endif
     Shop *shop;
     Statistics *statistics;
-    constexpr static const double version = 1.038;
+    constexpr static const double version = 1.039;
     const int disabledTime = 4000;
-    int newestPost = 2636109;
+    int newestPost = 2651055;
     int playingMode = MODE_NORMAL;
     int connectionTries = 0;
     Account account;
@@ -181,6 +181,7 @@ private:
     std::vector <QPixmap> normalEnemys;
     std::vector <QPixmap> blitzAnimation;
     std::vector <QPixmap> wandAnimation;
+    std::vector <QPixmap> towerTemplates;
     std::vector <int> chosenTiles;
     std::vector <int> waypoints;
     Path tempPath;
@@ -545,6 +546,7 @@ private:
     void pauseGame();
     void error_string(QString e1,QString e2,QString e3);
     void error_save(QFile &file, QString msg = "Fehler beim laden!");
+    void error_main(QString e);
     int updatePath(int pos);
     int calcProjectiles(int num);
     int sendDataToServer(QString data);

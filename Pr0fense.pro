@@ -170,8 +170,7 @@ FORMS += \
         frmmain.ui
 
 
-PRECOMPILED_HEADER = stable.h
-CONFIG += mobility c++14 resources_big precompile_header
+CONFIG += mobility c++14 resources_big
 MOBILITY =
 
 DISTFILES += \
@@ -186,6 +185,8 @@ DISTFILES += \
     android/res/values/colors.xml
 
 ANDROID_PACKAGE_SOURCE_DIR = $$PWD/android
+
+QMAKE_CXXFLAGS += -fexceptions -frtti
 
 RESOURCES += \
     resources.qrc \

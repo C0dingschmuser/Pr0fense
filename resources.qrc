@@ -194,5 +194,15 @@
         <file>data/maps/maze/map2.dat</file>
         <file>data/maps/maze/map3.dat</file>
         <file>data/images/maps/maze/map3.png</file>
+        <file>data/images/towers/template/tower1.png</file>
+        <file>data/images/towers/template/tower2.png</file>
+        <file>data/images/towers/template/tower3.png</file>
+        <file>data/images/towers/template/tower4.png</file>
+        <file>data/images/towers/template/tower5.png</file>
+        <file>data/images/towers/template/tower6.png</file>
+        <file>data/images/towers/template/tower7.png</file>
+        <file>data/images/towers/template/tower8.png</file>
+        <file>data/images/towers/template/tower9.png</file>
+        <file>data/images/towers/template/tower10.png</file>
     </qresource>
 </RCC>

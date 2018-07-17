@@ -2811,6 +2811,32 @@ void FrmMain::error_save(QFile &file, QString msg)
     return;
 }
 
+void FrmMain::error_main(QString e)
+{
+    closing = true;
+    do {
+        QMetaObject::invokeMethod(t_main,"stop");
+        QMetaObject::invokeMethod(t_projectile,"stop");
+        QMetaObject::invokeMethod(t_projectile_full,"stop");
+        QMetaObject::invokeMethod(t_draw,"stop");
+        QMetaObject::invokeMethod(t_wave,"stop");
+        QMetaObject::invokeMethod(t_waveSpeed,"stop");
+        QMetaObject::invokeMethod(t_physics,"stop");
+        QMetaObject::invokeMethod(t_menuAn,"stop");
+        QMetaObject::invokeMethod(t_animation,"stop");
+        QMetaObject::invokeMethod(t_idle,"stop");
+        QMetaObject::invokeMethod(t_shake,"stop");
+        QMetaObject::invokeMethod(t_grasAn,"stop");
+        QMetaObject::invokeMethod(t_towerTarget,"stop");
+    } while(checkTimers(1));
+    workerThread->quit();
+    physicsThread->quit();
+    projectileThread->quit();
+    QMessageBox::information(this, "Fehler", "Fehler! Bitte an @FireDiver melden:\n"+
+                                       e);
+    this->close();
+}
+
 int FrmMain::updatePath(int pos)
 {
     //todo
@@ -4633,17 +4659,21 @@ void FrmMain::drawTower(QRect pos2, QPainter &painter, Tower *tmpTower, int info
             painter.drawText(costPos,QString::number(cost));
         }
         painter.setPen(Qt::NoPen);
-        painter.setBrush(Engine::getColor(ENEMY_NEUSCHWUCHTEL));
-        painter.drawEllipse((QPointF)pos.center(),pos.width()*0.3,pos.height()*0.3);
-        painter.drawPixmap(pos,towerGroundPx, QRectF(0,0,towerPxSize,towerPxSize));
-        painter.save();
-        if(t) {
-            painter.translate(pos.center());
-            painter.rotate(t->angle);
-            painter.translate(-pos.center().x(),-pos.center().y());
+        if(t != nullptr) {
+            painter.setBrush(Engine::getColor(ENEMY_NEUSCHWUCHTEL));
+            painter.drawEllipse((QPointF)pos.center(),pos.width()*0.3,pos.height()*0.3);
+            painter.drawPixmap(pos,towerGroundPx, QRectF(0,0,towerPxSize,towerPxSize));
+            painter.save();
+            if(t) {
+                painter.translate(pos.center());
+                painter.rotate(t->angle);
+                painter.translate(-pos.center().x(),-pos.center().y());
+            }
+            painter.drawPixmap(pos,minusTowerPx, QRectF(0,0,towerPxSize,towerPxSize));
+            painter.restore();
+        } else {
+            painter.drawPixmap(minusTowerRect, towerTemplates[0]);
         }
-        painter.drawPixmap(pos,minusTowerPx, QRectF(0,0,towerPxSize,towerPxSize));
-        painter.restore();
         painter.setOpacity(fade);
         break;
     case TOWER_HERZ: //favoritentower
@@ -4658,17 +4688,21 @@ void FrmMain::drawTower(QRect pos2, QPainter &painter, Tower *tmpTower, int info
             painter.drawText(costPos,QString::number(cost));
         }
         painter.setPen(Qt::NoPen);
-        painter.setBrush(Engine::getColor(ENEMY_NEUSCHWUCHTEL));
-        painter.drawEllipse((QPointF)pos.center(),pos.width()*0.3,pos.height()*0.3);
-        painter.drawPixmap(pos,towerGroundPx, QRectF(0,0,towerPxSize,towerPxSize));
-        painter.save();
-        if(t) {
-            painter.translate(pos.center());
-            painter.rotate(t->angle);
-            painter.translate(-pos.center().x(),-pos.center().y());
+        if(t != nullptr) {
+            painter.setBrush(Engine::getColor(ENEMY_NEUSCHWUCHTEL));
+            painter.drawEllipse((QPointF)pos.center(),pos.width()*0.3,pos.height()*0.3);
+            painter.drawPixmap(pos,towerGroundPx, QRectF(0,0,towerPxSize,towerPxSize));
+            painter.save();
+            if(t) {
+                painter.translate(pos.center());
+                painter.rotate(t->angle);
+                painter.translate(-pos.center().x(),-pos.center().y());
+            }
+            painter.drawPixmap(pos,favTowerPx, QRectF(0,0,towerPxSize,towerPxSize));
+            painter.restore();
+        } else {
+            painter.drawPixmap(favTowerRect, towerTemplates[1]);
         }
-        painter.drawPixmap(pos,favTowerPx, QRectF(0,0,towerPxSize,towerPxSize));
-        painter.restore();
         painter.setOpacity(fade);
         break;
     case TOWER_REPOST: {//reposttower
@@ -4703,29 +4737,33 @@ void FrmMain::drawTower(QRect pos2, QPainter &painter, Tower *tmpTower, int info
             painter.drawText(costPos,QString::number(cost));
         }
         painter.setPen(Qt::NoPen);
-        painter.setBrush(Engine::getColor(ENEMY_NEUSCHWUCHTEL));
-        painter.drawEllipse((QPointF)pos.center(),pos.width()*0.36,pos.height()*0.36);
-        painter.drawPixmap(pos,towerGroundPx, QRectF(0,0,towerPxSize,towerPxSize));
-        painter.save();
         if(t != nullptr) {
-            painter.translate(posF.center());
+            painter.setBrush(Engine::getColor(ENEMY_NEUSCHWUCHTEL));
+            painter.drawEllipse((QPointF)pos.center(),pos.width()*0.36,pos.height()*0.36);
+            painter.drawPixmap(pos,towerGroundPx, QRectF(0,0,towerPxSize,towerPxSize));
+            painter.save();
+            if(t != nullptr) {
+                painter.translate(posF.center());
+            } else {
+                painter.translate(pos.center());
+            }
+            if(t != nullptr) {
+                int rotation = (1-(double)t->currentReload/t->reload)*360;
+                painter.rotate(rotation);
+            }
+            painter.setBrush(Qt::red);
+            painter.drawRect(-2,-2,4,4);
+            if(t != nullptr) {
+                painter.translate(-posF.center().x(),-posF.center().y());
+                painter.drawPixmap(posF,pr0coinPx,QRectF(0,0,towerPxSize,towerPxSize));
+            } else {
+                painter.translate(-pos.center().x(),-pos.center().y());
+                painter.drawPixmap(pos,pr0coinPx, QRectF(0,0,towerPxSize,towerPxSize));
+            }
+            painter.restore();
         } else {
-            painter.translate(pos.center());
+            painter.drawPixmap(benisTowerRect, towerTemplates[3]);
         }
-        if(t != nullptr) {
-            int rotation = (1-(double)t->currentReload/t->reload)*360;
-            painter.rotate(rotation);
-        }
-        painter.setBrush(Qt::red);
-        painter.drawRect(-2,-2,4,4);
-        if(t != nullptr) {
-            painter.translate(-posF.center().x(),-posF.center().y());
-            painter.drawPixmap(posF,pr0coinPx,QRectF(0,0,towerPxSize,towerPxSize));
-        } else {
-            painter.translate(-pos.center().x(),-pos.center().y());
-            painter.drawPixmap(pos,pr0coinPx, QRectF(0,0,towerPxSize,towerPxSize));
-        }
-        painter.restore();
         break; }
     case TOWER_BAN: //bantower
         cost = banTowerCost;
@@ -4755,17 +4793,21 @@ void FrmMain::drawTower(QRect pos2, QPainter &painter, Tower *tmpTower, int info
             painter.drawText(costPos,QString::number(cost));
         }
         painter.setPen(Qt::NoPen);
-        painter.setBrush(Engine::getColor(ENEMY_NEUSCHWUCHTEL));
-        painter.drawEllipse((QPointF)pos.center(),pos.width()*0.3,pos.height()*0.3);
-        painter.drawPixmap(pos,towerGroundPx, QRectF(0,0,towerPxSize,towerPxSize));
-        painter.save();
-        if(t) {
-            painter.translate(pos.center());
-            painter.rotate(t->angle);
-            painter.translate(-pos.center().x(),-pos.center().y());
+        if(t != nullptr) {
+            painter.setBrush(Engine::getColor(ENEMY_NEUSCHWUCHTEL));
+            painter.drawEllipse((QPointF)pos.center(),pos.width()*0.3,pos.height()*0.3);
+            painter.drawPixmap(pos,towerGroundPx, QRectF(0,0,towerPxSize,towerPxSize));
+            painter.save();
+            if(t) {
+                painter.translate(pos.center());
+                painter.rotate(t->angle);
+                painter.translate(-pos.center().x(),-pos.center().y());
+            }
+            painter.drawPixmap(pos,sniperPx, QRectF(0,0,towerPxSize,towerPxSize));
+            painter.restore();
+        } else {
+            painter.drawPixmap(sniperTowerRect, towerTemplates[5]);
         }
-        painter.drawPixmap(pos,sniperPx, QRectF(0,0,towerPxSize,towerPxSize));
-        painter.restore();
         painter.setOpacity(fade);
         break;
     case TOWER_FLAK: //flaktower
@@ -4780,17 +4822,21 @@ void FrmMain::drawTower(QRect pos2, QPainter &painter, Tower *tmpTower, int info
             painter.drawText(costPos,QString::number(cost));
         }
         painter.setPen(Qt::NoPen);
-        painter.setBrush(Engine::getColor(ENEMY_NEUSCHWUCHTEL));
-        painter.drawEllipse((QPointF)pos.center(),pos.width()*0.3,pos.height()*0.3);
-        painter.drawPixmap(pos,towerGroundPx, QRectF(0,0,towerPxSize,towerPxSize));
-        painter.save();
-        if(t) {
-            painter.translate(pos.center());
-            painter.rotate(t->angle);
-            painter.translate(-pos.center().x(),-pos.center().y());
+        if(t != nullptr) {
+            painter.setBrush(Engine::getColor(ENEMY_NEUSCHWUCHTEL));
+            painter.drawEllipse((QPointF)pos.center(),pos.width()*0.3,pos.height()*0.3);
+            painter.drawPixmap(pos,towerGroundPx, QRectF(0,0,towerPxSize,towerPxSize));
+            painter.save();
+            if(t) {
+                painter.translate(pos.center());
+                painter.rotate(t->angle);
+                painter.translate(-pos.center().x(),-pos.center().y());
+            }
+            painter.drawPixmap(pos,flakTowerPx, QRectF(0,0,towerPxSize,towerPxSize));
+            painter.restore();
+        } else {
+            painter.drawPixmap(flakTowerRect, towerTemplates[6]);
         }
-        painter.drawPixmap(pos,flakTowerPx, QRectF(0,0,towerPxSize,towerPxSize));
-        painter.restore();
         painter.setOpacity(fade);
         break;
     case TOWER_LASER: //lasertower
@@ -4805,17 +4851,21 @@ void FrmMain::drawTower(QRect pos2, QPainter &painter, Tower *tmpTower, int info
             painter.drawText(costPos,QString::number(cost));
         }
         painter.setPen(Qt::NoPen);
-        painter.setBrush(Engine::getColor(ENEMY_NEUSCHWUCHTEL));
-        painter.drawEllipse((QPointF)pos.center(),pos.width()*0.3,pos.height()*0.3);
-        painter.drawPixmap(pos,towerGroundPx, QRectF(0,0,towerPxSize,towerPxSize));
-        painter.save();
-        if(t) {
-            painter.translate(pos.center());
-            painter.rotate(t->angle);
-            painter.translate(-pos.center().x(),-pos.center().y());
+        if(t != nullptr) {
+            painter.setBrush(Engine::getColor(ENEMY_NEUSCHWUCHTEL));
+            painter.drawEllipse((QPointF)pos.center(),pos.width()*0.3,pos.height()*0.3);
+            painter.drawPixmap(pos,towerGroundPx, QRectF(0,0,towerPxSize,towerPxSize));
+            painter.save();
+            if(t) {
+                painter.translate(pos.center());
+                painter.rotate(t->angle);
+                painter.translate(-pos.center().x(),-pos.center().y());
+            }
+            painter.drawPixmap(pos,laserTowerPx, QRectF(0,0,towerPxSize,towerPxSize));
+            painter.restore();
+        } else {
+            painter.drawPixmap(laserTowerRect, towerTemplates[7]);
         }
-        painter.drawPixmap(pos,laserTowerPx, QRectF(0,0,towerPxSize,towerPxSize));
-        painter.restore();
         painter.setOpacity(fade);
         break;
     case TOWER_POISON: //Gifttower
@@ -4830,17 +4880,21 @@ void FrmMain::drawTower(QRect pos2, QPainter &painter, Tower *tmpTower, int info
             painter.drawText(costPos,QString::number(cost));
         }
         painter.setPen(Qt::NoPen);
-        painter.setBrush(Engine::getColor(ENEMY_NEUSCHWUCHTEL));
-        painter.drawEllipse((QPointF)pos.center(),pos.width()*0.3,pos.height()*0.3);
-        painter.drawPixmap(pos,towerGroundPx, QRectF(0,0,towerPxSize,towerPxSize));
-        painter.save();
-        if(t) {
-            painter.translate(pos.center());
-            painter.rotate(t->angle);
-            painter.translate(-pos.center().x(),-pos.center().y());
+        if(t != nullptr) {
+            painter.setBrush(Engine::getColor(ENEMY_NEUSCHWUCHTEL));
+            painter.drawEllipse((QPointF)pos.center(),pos.width()*0.3,pos.height()*0.3);
+            painter.drawPixmap(pos,towerGroundPx, QRectF(0,0,towerPxSize,towerPxSize));
+            painter.save();
+            if(t) {
+                painter.translate(pos.center());
+                painter.rotate(t->angle);
+                painter.translate(-pos.center().x(),-pos.center().y());
+            }
+            painter.drawPixmap(pos,poisonTowerPx, QRectF(0,0,towerPxSize,towerPxSize));
+            painter.restore();
+        } else {
+            painter.drawPixmap(poisonTowerRect, towerTemplates[8]);
         }
-        painter.drawPixmap(pos,poisonTowerPx, QRectF(0,0,towerPxSize,towerPxSize));
-        painter.restore();
         painter.setOpacity(fade);
         break;
     case TOWER_MINIGUN:
@@ -4855,17 +4909,21 @@ void FrmMain::drawTower(QRect pos2, QPainter &painter, Tower *tmpTower, int info
             painter.drawText(costPos,QString::number(cost));
         }
         painter.setPen(Qt::NoPen);
-        painter.setBrush(Engine::getColor(ENEMY_NEUSCHWUCHTEL));
-        painter.drawEllipse((QPointF)pos.center(),pos.width()*0.3,pos.height()*0.3);
-        painter.drawPixmap(pos,towerGroundPx, QRectF(0,0,towerPxSize,towerPxSize));
-        painter.save();
-        if(t) {
-            painter.translate(pos.center());
-            painter.rotate(t->angle);
-            painter.translate(-pos.center().x(),-pos.center().y());
-            painter.drawPixmap(pos,minigunTowerPx[t->animation], QRectF(0,0,512,512));
-        } else  painter.drawPixmap(pos,minigunTowerPx[1], QRectF(0,0,towerPxSize,towerPxSize));
-        painter.restore();
+        if(t != nullptr) {
+            painter.setBrush(Engine::getColor(ENEMY_NEUSCHWUCHTEL));
+            painter.drawEllipse((QPointF)pos.center(),pos.width()*0.3,pos.height()*0.3);
+            painter.drawPixmap(pos,towerGroundPx, QRectF(0,0,towerPxSize,towerPxSize));
+            painter.save();
+            if(t) {
+                painter.translate(pos.center());
+                painter.rotate(t->angle);
+                painter.translate(-pos.center().x(),-pos.center().y());
+                painter.drawPixmap(pos,minigunTowerPx[t->animation], QRectF(0,0,512,512));
+            } else  painter.drawPixmap(pos,minigunTowerPx[1], QRectF(0,0,towerPxSize,towerPxSize));
+            painter.restore();
+        } else {
+            painter.drawPixmap(minigunTowerRect, towerTemplates[9]);
+        }
         painter.setOpacity(fade);
         break;
     }
@@ -5433,42 +5491,54 @@ void FrmMain::towerMenuClicked(QRect pos)
             shake(10, 0, 3);
             statistics->towersBuilt++;
             statistics->towersBuilt += chosenTiles.size();
+            enemyWarning = false;
         } else if(!buy && clicked){
             if(towerMenuSelected > -1 && playingMode == MODE_MAZE) {
                 mutex.lock();
-
-                tempPath.path.resize(0);
-                std::vector <Tile> tempTiles;
-                for(uint i = 0; i < tiles.size(); i++) {
-                    Tile tmp;
-                    tmp.type = tiles[i]->type;
-                    tempTiles.push_back(tmp);
-                }
-                tiles[towerMenu]->type = TILE_TOWER;
-                if(chosenTiles.size()) {
-                    for(uint i = 0; i < chosenTiles.size(); i++) {
-                        tiles[chosenTiles[i]]->type = TILE_TOWER;
+                bool coll = false;
+                if(pathsContains(towerMenu)) coll = true;
+                for(uint i = 0; i < chosenTiles.size(); i++) {
+                    if(pathsContains(chosenTiles[i])) {
+                        coll = true;
+                        break;
                     }
                 }
-                int code = createMazePath(true);
-                for(uint i = 0; i < tiles.size(); i++) {
-                    tiles[i]->type = tempTiles[i].type;
-                }
-
-                mutex.unlock();
-                if(code != 0) {
-                    tempPath.path.resize(0);
-                    towerMenuSelected = -1;
-                    QMessageBox::information(this, "Info", "Bauen unmöglich.\n"
-                                                           "Weg blockiert!");
-                } else {
-                    bool ok = false;
-                    for(uint i = 0; i < enemys.size(); i++) {
-                        if(!tempPath.contains(enemys[i]->cpos)) {
-                            ok = true;
+                tempPath.path.resize(0);
+                if(coll) {
+                    std::vector <Tile> tempTiles;
+                    for(uint i = 0; i < tiles.size(); i++) {
+                        Tile tmp;
+                        tmp.type = tiles[i]->type;
+                        tempTiles.push_back(tmp);
+                    }
+                    tiles[towerMenu]->type = TILE_TOWER;
+                    if(chosenTiles.size()) {
+                        for(uint i = 0; i < chosenTiles.size(); i++) {
+                            tiles[chosenTiles[i]]->type = TILE_TOWER;
                         }
                     }
-                    if(ok) enemyWarning = true;
+                    int code = createMazePath(true);
+                    for(uint i = 0; i < tiles.size(); i++) {
+                        tiles[i]->type = tempTiles[i].type;
+                    }
+
+                    mutex.unlock();
+                    if(code != 0) {
+                        tempPath.path.resize(0);
+                        towerMenuSelected = -1;
+                        QMessageBox::information(this, "Info", "Bauen unmöglich.\n"
+                                                               "Weg blockiert!");
+                    } else {
+                        bool ok = false;
+                        for(uint i = 0; i < enemys.size(); i++) {
+                            if(!tempPath.contains(enemys[i]->cpos)) {
+                                ok = true;
+                            }
+                        }
+                        if(ok) enemyWarning = true;
+                    }
+                } else {
+                    mutex.unlock();
                 }
             }
         }
@@ -6712,6 +6782,10 @@ void FrmMain::loadGraphics()
     for(uint i = 0; i < 5; i++) {
         wandAnimation.push_back(QPixmap(":/data/images/effects/art13/"+QString::number(i)+".png"));
     }
+
+    for(uint i = 0; i < 10; i++) {
+        towerTemplates.push_back(QPixmap(":/data/images/towers/template/tower"+QString::number(i+1)+".png"));
+    }
 }
 
 void FrmMain::loadOptions()
@@ -6813,18 +6887,13 @@ void FrmMain::loadOptions()
 
                 QStringList mazeSplit = maze.split("#");
                 for(int i = 0; i < mazeSplit.size(); i++) {
-                    shop->mazelvlPrices.push_back(mazeSplit[i].toInt());
+                    shop->mazelvlPrices[i] = mazeSplit[i].toInt();
                 }
             } else {
                 QStringList split = data.split("#");
                 for(int i = 0; i < split.size(); i++) {
                     lvlPrices.push_back(split[i].toInt());
                 }
-
-                shop->mazelvlPrices.push_back(0);
-                shop->mazelvlPrices.push_back(500);
-                shop->mazelvlPrices.push_back(750);
-                shop->mazelvlPrices.push_back(1500);
             }
             ok = true;
         }
@@ -7945,6 +8014,7 @@ void FrmMain::mouseReleaseEvent(QMouseEvent *e)
                     }
                     chosenTiles.resize(0);
                     towerMenu = -1;
+                    enemyWarning = false;
                     if(playingMode == MODE_MAZE) {
                         tempPath.path.resize(0);
                     }

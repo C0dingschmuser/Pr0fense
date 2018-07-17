@@ -32,13 +32,13 @@ int main(int argc, char *argv[])
     Pr0fenseApp app(argc, argv);
     FrmMain w;
 #ifdef QT_NO_DEBUG
-    w.setWindowFlags(Qt::FramelessWindowHint);
+    //w.setWindowFlags(Qt::FramelessWindowHint);
 #endif
 
 #ifdef Q_OS_ANDROID
     w.showFullScreen();
 #else
-    w.showMaximized();
+    w.showNormal();
 #endif
 
 #ifdef QT_DEBUG
